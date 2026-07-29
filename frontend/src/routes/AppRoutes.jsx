@@ -15,7 +15,10 @@ import CustomerProfile from '../pages/Customers/CustomerProfile';
 import Analytics from '../pages/Analytics/Analytics';
 import Settings from '../pages/Settings/Settings';
 import Admin from '../pages/Admin/Admin';
+
 import GamificationBuilder from '../pages/Gamification/GamificationBuilder';
+
+import Notifications from '../pages/Notifications/Notifications';
 
 const NotFound = () => <div className="p-10 text-center text-xl">404 Not Found</div>;
 const Placeholder = ({ name }) => <div className="p-10 text-center text-xl">{name} Page (Coming Soon)</div>;
@@ -54,7 +57,7 @@ const AppRoutes = () => {
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
-          <Route path="/notifications" element={<Placeholder name="Notifications" />} />
+          <Route path="/notifications" element={<Notifications />} />
           <Route path="/favorites" element={<Placeholder name="Favorites" />} />
         </Route>
 
