@@ -11,16 +11,20 @@ import Tools from '../pages/Tools/Tools';
 import Promotions from '../pages/Promotions/Promotions';
 import AIAssistant from '../pages/AIAssistant/AIAssistant';
 import Customers from '../pages/Customers/Customers';
+import CustomerProfile from '../pages/Customers/CustomerProfile';
 import Analytics from '../pages/Analytics/Analytics';
 import Settings from '../pages/Settings/Settings';
 import Admin from '../pages/Admin/Admin';
+import GamificationBuilder from '../pages/Gamification/GamificationBuilder';
 
 const NotFound = () => <div className="p-10 text-center text-xl">404 Not Found</div>;
 const Placeholder = ({ name }) => <div className="p-10 text-center text-xl">{name} Page (Coming Soon)</div>;
 
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, isReady } = useAuth();
-  if (!isReady) return <div className="flex h-screen items-center justify-center">Загрузка...</div>;
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) return <div className="flex h-screen items-center justify-center">Loading auth...</div>;
+
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 
@@ -45,6 +49,8 @@ const AppRoutes = () => {
           <Route path="/promotions" element={<Promotions />} />
           <Route path="/ai-assistant" element={<AIAssistant />} />
           <Route path="/customers" element={<Customers />} />
+          <Route path="/customers/:id" element={<CustomerProfile />} />
+          <Route path="/gamification" element={<GamificationBuilder />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
