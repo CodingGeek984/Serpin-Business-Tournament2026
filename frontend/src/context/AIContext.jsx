@@ -1,31 +1,32 @@
 import React, { createContext, useState, useContext } from 'react';
+import { api } from '../services/api';
+import { useAuth } from './AuthContext';
 
 const AIContext = createContext();
 
 export const AIProvider = ({ children }) => {
-  const [messages, setMessages] = useState([
-    { role: 'ai', content: 'Привет! Я твой бизнес-ассистент. Могу помочь создать акцию, проанализировать продажи или написать пост для соцсетей. Что будем делать сегодня?' }
-  ]);
+  const { token } = useAuth();
+  const [messages, setMessages] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [chatId, setChatId] = useState(null);
 
-  const sendMessage = (text) => {
+  const sendMessage = async (text) => {
     setMessages(prev => [...prev, { role: 'user', content: text }]);
     setIsTyping(true);
-
-    // Simulate AI response
-    setTimeout(() => {
-      let aiResponse = "Я могу помочь с этим. Давайте настроим!";
-      
-      const lowerText = text.toLowerCase();
-      if (lowerText.includes('акци') || lowerText.includes('скидк')) {
-        aiResponse = "Отличная идея для акции! Рекомендую запустить скидку на повторный визит или акцию '2+1'. Я могу автоматически сгенерировать текст для Kaspi и Instagram. Сделать это?";
-      } else if (lowerText.includes('kaspi') || lowerText.includes('каспи')) {
-        aiResponse = "Для интеграции с Kaspi, вам нужно настроить выгрузку товаров. У нас есть готовый модуль в разделе 'Инструменты'.";
+    try {
+      let activeChatId = chatId;
+      if (!activeChatId) {
+        const chat = await api('/ai/chats', { method: 'POST', token, body: { title: text.slice(0, 60) } });
+        activeChatId = chat.id;
+        setChatId(activeChatId);
       }
-
-      setMessages(prev => [...prev, { role: 'ai', content: aiResponse }]);
+      const result = await api(`/ai/chats/${activeChatId}/messages`, { method: 'POST', token, body: { text } });
+      setMessages(prev => [...prev, { role: 'ai', content: result.reply.text }]);
+    } catch (error) {
+      setMessages(prev => [...prev, { role: 'ai', content: `Не удалось получить ответ: ${error.message}` }]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   return (

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { MOCK_TOOLS } from '../../constants/mockData';
+import React, { useEffect, useState } from 'react';
+import { api } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import { Card, CardContent } from '../../components/common/Card/Card';
 import Button from '../../components/common/Button/Button';
 import { Mail, Gift, CreditCard, Brain, Check, ChevronRight, Heart } from 'lucide-react';
@@ -30,21 +31,35 @@ const itemVariants = {
 
 const Tools = () => {
   const { addNotification } = useNotification();
+  const { token } = useAuth();
+  const [tools, setTools] = useState([]);
   const [favorites, setFavorites] = useState(new Set());
   const [filter, setFilter] = useState('all'); // all, active, inactive
 
-  const toggleFavorite = (id, name) => {
-    setFavorites(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-        addNotification(`"${name}" удален из избранного`, 'info');
-      } else {
-        next.add(id);
-        addNotification(`"${name}" добавлен в избранное`, 'success');
-      }
-      return next;
-    });
+  useEffect(() => {
+    api('/tools', { token }).then((items) => {
+      setTools(items.map((item) => ({ ...item, active: item.is_active })));
+      setFavorites(new Set(items.filter((item) => item.is_favorite).map((item) => item.id)));
+    }).catch((error) => addNotification(error.message, 'error'));
+  }, [token, addNotification]);
+
+  const toggleFavorite = async (id, name) => {
+    const isFavorite = favorites.has(id);
+    try {
+      await api(`/tools/${id}/favorite`, { method: isFavorite ? 'DELETE' : 'POST', token });
+      setFavorites((current) => {
+        const next = new Set(current);
+        if (isFavorite) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+        return next;
+      });
+      addNotification(`"${name}" ${isFavorite ? 'удален из' : 'добавлен в'} избранное`, isFavorite ? 'info' : 'success');
+    } catch (error) {
+      addNotification(error.message, 'error');
+    }
   };
 
   const handleAction = (tool) => {
@@ -55,7 +70,7 @@ const Tools = () => {
     }
   };
 
-  const filteredTools = MOCK_TOOLS.filter(t => {
+  const filteredTools = tools.filter(t => {
     if (filter === 'active') return t.active;
     if (filter === 'inactive') return !t.active;
     return true;

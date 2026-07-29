@@ -1,25 +1,42 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/common/Card/Card';
 import Button from '../../components/common/Button/Button';
-import { useUser } from '../../context/UserContext';
+import { useAuth } from '../../context/AuthContext';
+import { api } from '../../services/api';
 import { Database, Plus, Edit2, Trash2, Users, Building, Activity } from 'lucide-react';
 
 const Admin = () => {
-  const { promoTemplates } = useUser();
-  const [templates, setTemplates] = useState(promoTemplates);
-  const [editingId, setEditingId] = useState(null);
-  
-  // Realistically this would be an admin context/API, simulating state here for MVP
+  const { token } = useAuth();
+  const [templates, setTemplates] = useState([]);
+  const [summary, setSummary] = useState({ businesses: 0, active_promotions: 0, customers: 0 });
+  const [error, setError] = useState('');
   const [newTemplate, setNewTemplate] = useState({ title: '', desc: '', type: 'discount', defaultBudget: 0 });
 
-  const handleDelete = (id) => {
-    setTemplates(templates.filter(t => t.id !== id));
+  const loadData = useCallback(async () => {
+    try {
+      const [nextSummary, nextTemplates] = await Promise.all([
+        api('/admin/summary', { token }),
+        api('/admin/templates', { token }),
+      ]);
+      setSummary(nextSummary);
+      setTemplates(nextTemplates);
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  }, [token]);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  const handleDelete = async (id) => {
+    await api(`/admin/templates/${id}`, { method: 'DELETE', token });
+    setTemplates((current) => current.filter((template) => template.id !== id));
   };
 
-  const handleAdd = (e) => {
+  const handleAdd = async (e) => {
     e.preventDefault();
     if (newTemplate.title) {
-      setTemplates([...templates, { ...newTemplate, id: `tpl_${Date.now()}` }]);
+      const created = await api('/admin/templates', { method: 'POST', token, body: newTemplate });
+      setTemplates((current) => [...current, created]);
       setNewTemplate({ title: '', desc: '', type: 'discount', defaultBudget: 0 });
     }
   };
@@ -33,6 +50,7 @@ const Admin = () => {
         </h1>
         <p className="text-sm text-gray-500 mt-1">Управление глобальными шаблонами акций и статистика B2B-клиентов</p>
       </div>
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="bg-[var(--color-brand-blue)] text-white">
@@ -40,7 +58,7 @@ const Admin = () => {
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-blue-100 text-sm mb-1">Всего бизнесов</p>
-                <h3 className="text-3xl font-bold">142</h3>
+                <h3 className="text-3xl font-bold">{summary.businesses}</h3>
               </div>
               <Building className="w-8 h-8 text-blue-200 opacity-80" />
             </div>
@@ -52,7 +70,7 @@ const Admin = () => {
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-gray-500 text-sm mb-1">Активных акций (Платформа)</p>
-                <h3 className="text-3xl font-bold text-gray-900">856</h3>
+                <h3 className="text-3xl font-bold text-gray-900">{summary.active_promotions}</h3>
               </div>
               <Activity className="w-8 h-8 text-emerald-500 opacity-80" />
             </div>
@@ -64,7 +82,7 @@ const Admin = () => {
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-gray-500 text-sm mb-1">Конечных пользователей</p>
-                <h3 className="text-3xl font-bold text-gray-900">45k+</h3>
+                <h3 className="text-3xl font-bold text-gray-900">{summary.customers}</h3>
               </div>
               <Users className="w-8 h-8 text-indigo-500 opacity-80" />
             </div>

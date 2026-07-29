@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext';
 import { Home, Wrench, Tag, Users, BarChart2, BrainCircuit, Bell, Star, Settings, Database } from 'lucide-react';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -20,10 +21,12 @@ const NAV_ITEMS = [
 ];
 
 const Sidebar = () => {
+  const { user } = useAuth();
+  const items = user?.role === 'admin' ? NAV_ITEMS : NAV_ITEMS.filter((item) => item.path !== '/admin');
   return (
     <aside className="sticky top-14 h-[calc(100vh-3.5rem)] w-64 p-3 hidden md:flex flex-col bg-transparent">
       <nav className="flex flex-col gap-1 flex-1 overflow-y-auto pr-2 pb-4">
-        {NAV_ITEMS.map((item) => (
+        {items.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}

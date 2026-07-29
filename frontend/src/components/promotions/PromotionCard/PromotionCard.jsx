@@ -1,17 +1,23 @@
 import React from 'react';
 import { Card, CardContent } from '../../common/Card/Card';
-import { Calendar, Eye, Users, MousePointerClick } from 'lucide-react';
+import { Calendar, Eye, MousePointerClick } from 'lucide-react';
 import Button from '../../common/Button/Button';
 import { useUser } from '../../../context/UserContext';
+import { useNotification } from '../../../context/NotificationContext';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 const PromotionCard = ({ promotion }) => {
   const { updatePromotionStatus } = useUser();
+  const { addNotification } = useNotification();
   const isActive = promotion.status === 'active';
 
-  const toggleStatus = () => {
-    updatePromotionStatus(promotion.id, isActive ? 'paused' : 'active');
+  const toggleStatus = async () => {
+    try {
+      await updatePromotionStatus(promotion.id, isActive ? 'paused' : 'active');
+    } catch (error) {
+      addNotification(error.message, 'error');
+    }
   };
 
   return (

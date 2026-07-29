@@ -1,0 +1,5 @@
+backend/.env
+backend/app/data.json
+*.service-account.json
+service-account.json
+backend/app/serpin-business-tournament2026-*.json

@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardHeader, CardTitle, CardContent } from '../../common/Card/Card';
 import Button from '../../common/Button/Button';
 import { useUser } from '../../../context/UserContext';
-import { Check, ChevronRight, ChevronLeft, Ticket, Tag, Clock, Send } from 'lucide-react';
+import { useNotification } from '../../../context/NotificationContext';
+import { Check, ChevronRight, Ticket, Tag, Clock, Send } from 'lucide-react';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -16,6 +17,7 @@ const TYPE_ICONS = {
 
 const PromotionWizard = ({ onComplete, onCancel }) => {
   const { promoTemplates, addPromotion } = useUser();
+  const { addNotification } = useNotification();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     typeId: null,
@@ -34,8 +36,9 @@ const PromotionWizard = ({ onComplete, onCancel }) => {
 
   const handlePrev = () => setStep(s => s - 1);
 
-  const handleCreate = () => {
-    addPromotion({
+  const handleCreate = async () => {
+    try {
+      await addPromotion({
       title: formData.title,
       type: selectedTemplate.type,
       status: 'active',
@@ -45,8 +48,12 @@ const PromotionWizard = ({ onComplete, onCancel }) => {
       spent: 0,
       endDate: formData.endDate || new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
       qrData: `promo_new_${Date.now()}`
-    });
-    onComplete();
+      });
+      addNotification('Акция создана', 'success');
+      onComplete();
+    } catch (error) {
+      addNotification(error.message, 'error');
+    }
   };
 
   return (

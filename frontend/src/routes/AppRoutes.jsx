@@ -19,8 +19,14 @@ const NotFound = () => <div className="p-10 text-center text-xl">404 Not Found</
 const Placeholder = ({ name }) => <div className="p-10 text-center text-xl">{name} Page (Coming Soon)</div>;
 
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isReady } = useAuth();
+  if (!isReady) return <div className="flex h-screen items-center justify-center">Загрузка...</div>;
   return isAuthenticated ? children : <Navigate to="/login" replace />;
+};
+
+const AdminRoute = ({ children }) => {
+  const { user } = useAuth();
+  return user?.role === 'admin' ? children : <Navigate to="/dashboard" replace />;
 };
 
 const AppRoutes = () => {
@@ -41,7 +47,7 @@ const AppRoutes = () => {
           <Route path="/customers" element={<Customers />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/settings" element={<Settings />} />
-          <Route path="/admin" element={<Admin />} />
+          <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
           <Route path="/notifications" element={<Placeholder name="Notifications" />} />
           <Route path="/favorites" element={<Placeholder name="Favorites" />} />
         </Route>
