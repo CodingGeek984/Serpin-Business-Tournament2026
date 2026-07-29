@@ -22,6 +22,18 @@ def create_app(config_object=Config):
     def revoked_token(_jwt_header, _jwt_payload):
         return jsonify({"success": False, "message": "Token has been revoked"}), 401
 
+    @jwt.unauthorized_loader
+    def missing_token(message):
+        return jsonify({"success": False, "message": message}), 401
+
+    @jwt.invalid_token_loader
+    def invalid_token(message):
+        return jsonify({"success": False, "message": message}), 401
+
+    @jwt.expired_token_loader
+    def expired_token(_jwt_header, _jwt_payload):
+        return jsonify({"success": False, "message": "Token has expired"}), 401
+
     register_routes(app)
 
     @app.get("/api/health")

@@ -1,6 +1,6 @@
 from flask import request
 
-from controllers.common import business_required, current_business, error, ok
+from controllers.common import access_denied, business_required, current_business, error, ok
 from store import store
 
 
@@ -12,12 +12,11 @@ CUSTOMER_FIELDS = {
 
 def get_owned_customer(customer_id):
     customer = store.find("customers", customer_id)
-    business = current_business()
-
-    if customer is None or customer["business_id"] != business["id"]:
-        return None
-
-    return customer
+    if customer is None:
+        return None, error("Customer not found", 404)
+    if customer["business_id"] != current_business()["id"]:
+        return None, access_denied()
+    return customer, None
 
 
 def customer_fields(data):
@@ -83,18 +82,18 @@ def create_customer():
 
 @business_required
 def get_customer(customer_id):
-    customer = get_owned_customer(customer_id)
-    if customer is None:
-        return error("Customer not found", 404)
+    customer, failure = get_owned_customer(customer_id)
+    if failure:
+        return failure
 
     return ok(customer)
 
 
 @business_required
 def update_customer(customer_id):
-    customer = get_owned_customer(customer_id)
-    if customer is None:
-        return error("Customer not found", 404)
+    customer, failure = get_owned_customer(customer_id)
+    if failure:
+        return failure
 
     data = request.get_json(silent=True) or {}
     updates = customer_fields(data)
@@ -107,9 +106,9 @@ def update_customer(customer_id):
 
 @business_required
 def delete_customer(customer_id):
-    customer = get_owned_customer(customer_id)
-    if customer is None:
-        return error("Customer not found", 404)
+    customer, failure = get_owned_customer(customer_id)
+    if failure:
+        return failure
 
     store.delete("customers", customer_id)
     return ok(message="Customer deleted")

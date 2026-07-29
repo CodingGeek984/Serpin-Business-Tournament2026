@@ -1,17 +1,17 @@
 from flask import request
 from flask_jwt_extended import jwt_required
 
-from controllers.common import current_user_id, error, ok
+from controllers.common import access_denied, current_user_id, error, ok
 from store import store
 
 
 def get_owned_chat(chat_id):
     chat = store.find("ai_chats", chat_id)
-
-    if chat is None or chat["user_id"] != current_user_id():
-        return None
-
-    return chat
+    if chat is None:
+        return None, error("Chat not found", 404)
+    if chat["user_id"] != current_user_id():
+        return None, access_denied()
+    return chat, None
 
 
 @jwt_required()
@@ -41,9 +41,9 @@ def create_chat():
 
 @jwt_required()
 def delete_chat(chat_id):
-    chat = get_owned_chat(chat_id)
-    if chat is None:
-        return error("Chat not found", 404)
+    chat, failure = get_owned_chat(chat_id)
+    if failure:
+        return failure
 
     store.delete("ai_chats", chat_id)
     messages = store.filter("ai_messages", chat_id=chat_id)
@@ -55,9 +55,9 @@ def delete_chat(chat_id):
 
 @jwt_required()
 def get_messages(chat_id):
-    chat = get_owned_chat(chat_id)
-    if chat is None:
-        return error("Chat not found", 404)
+    chat, failure = get_owned_chat(chat_id)
+    if failure:
+        return failure
 
     messages = store.filter("ai_messages", chat_id=chat_id)
     return ok(messages)
@@ -65,9 +65,9 @@ def get_messages(chat_id):
 
 @jwt_required()
 def send_message(chat_id):
-    chat = get_owned_chat(chat_id)
-    if chat is None:
-        return error("Chat not found", 404)
+    chat, failure = get_owned_chat(chat_id)
+    if failure:
+        return failure
 
     data = request.get_json(silent=True) or {}
     text = str(data.get("text", "")).strip()

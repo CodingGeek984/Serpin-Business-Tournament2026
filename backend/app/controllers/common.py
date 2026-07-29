@@ -19,6 +19,11 @@ def error(message, status=400):
     return jsonify({"success": False, "message": message}), status
 
 
+def access_denied():
+    """Return a consistent response when an existing resource belongs to another user."""
+    return error("Access denied", 403)
+
+
 def current_user_id():
     return str(get_jwt_identity())
 
@@ -27,11 +32,26 @@ def current_business():
     return store.first("businesses", user_id=current_user_id())
 
 
+def current_user():
+    return store.find("users", current_user_id())
+
+
 def business_required(handler):
     @wraps(handler)
     @jwt_required()
     def wrapped(*args, **kwargs):
         if not current_business():
             return error("Business profile not found", 404)
+        return handler(*args, **kwargs)
+    return wrapped
+
+
+def admin_required(handler):
+    @wraps(handler)
+    @jwt_required()
+    def wrapped(*args, **kwargs):
+        user = current_user()
+        if user is None or user.get("role") != "admin":
+            return access_denied()
         return handler(*args, **kwargs)
     return wrapped

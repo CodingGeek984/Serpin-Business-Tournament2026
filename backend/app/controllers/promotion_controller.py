@@ -1,6 +1,6 @@
 from flask import request
 
-from controllers.common import business_required, current_business, error, ok
+from controllers.common import access_denied, business_required, current_business, error, ok
 from store import store
 
 
@@ -12,12 +12,11 @@ PROMOTION_FIELDS = {
 
 def get_owned_promotion(promotion_id):
     promotion = store.find("promotions", promotion_id)
-    business = current_business()
-
-    if promotion is None or promotion["business_id"] != business["id"]:
-        return None
-
-    return promotion
+    if promotion is None:
+        return None, error("Promotion not found", 404)
+    if promotion["business_id"] != current_business()["id"]:
+        return None, access_denied()
+    return promotion, None
 
 
 def allowed_fields(data):
@@ -62,18 +61,18 @@ def create_promotion():
 
 @business_required
 def get_promotion(promotion_id):
-    promotion = get_owned_promotion(promotion_id)
-    if promotion is None:
-        return error("Promotion not found", 404)
+    promotion, failure = get_owned_promotion(promotion_id)
+    if failure:
+        return failure
 
     return ok(promotion)
 
 
 @business_required
 def update_promotion(promotion_id):
-    promotion = get_owned_promotion(promotion_id)
-    if promotion is None:
-        return error("Promotion not found", 404)
+    promotion, failure = get_owned_promotion(promotion_id)
+    if failure:
+        return failure
 
     data = request.get_json(silent=True) or {}
     updates = allowed_fields(data)
@@ -83,9 +82,9 @@ def update_promotion(promotion_id):
 
 @business_required
 def delete_promotion(promotion_id):
-    promotion = get_owned_promotion(promotion_id)
-    if promotion is None:
-        return error("Promotion not found", 404)
+    promotion, failure = get_owned_promotion(promotion_id)
+    if failure:
+        return failure
 
     store.update("promotions", promotion_id, {"is_active": False})
     return ok(message="Promotion deactivated")

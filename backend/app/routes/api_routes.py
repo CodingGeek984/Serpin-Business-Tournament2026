@@ -4,7 +4,7 @@ Controllers hold request-handling logic; this module owns URL paths and methods.
 """
 from flask import Blueprint
 
-from controllers import ai_chat_controller
+from controllers import admin_controller, ai_chat_controller
 from controllers import analytics_controller
 from controllers import auth_controller
 from controllers import business_controller
@@ -13,6 +13,7 @@ from controllers import notification_controller
 from controllers import promotion_controller
 from controllers import recommendation_controller
 from controllers import tool_controller
+from controllers import template_controller
 
 
 def register_routes(app):
@@ -26,6 +27,8 @@ def register_routes(app):
     app.register_blueprint(create_recommendation_routes())
     app.register_blueprint(create_notification_routes())
     app.register_blueprint(create_ai_chat_routes())
+    app.register_blueprint(create_template_routes())
+    app.register_blueprint(create_admin_routes())
 
 
 def create_auth_routes():
@@ -103,4 +106,19 @@ def create_ai_chat_routes():
     routes.add_url_rule("/<chat_id>", view_func=ai_chat_controller.delete_chat, methods=["DELETE"])
     routes.add_url_rule("/<chat_id>/messages", view_func=ai_chat_controller.get_messages, methods=["GET"])
     routes.add_url_rule("/<chat_id>/messages", view_func=ai_chat_controller.send_message, methods=["POST"])
+    return routes
+
+
+def create_template_routes():
+    routes = Blueprint("promotion_templates", __name__, url_prefix="/api/promotion-templates")
+    routes.add_url_rule("", view_func=template_controller.get_templates, methods=["GET"])
+    return routes
+
+
+def create_admin_routes():
+    routes = Blueprint("admin", __name__, url_prefix="/api/admin")
+    routes.add_url_rule("/summary", view_func=admin_controller.get_summary, methods=["GET"])
+    routes.add_url_rule("/templates", view_func=template_controller.get_admin_templates, methods=["GET"])
+    routes.add_url_rule("/templates", view_func=template_controller.create_template, methods=["POST"])
+    routes.add_url_rule("/templates/<template_id>", view_func=template_controller.delete_template, methods=["DELETE"])
     return routes

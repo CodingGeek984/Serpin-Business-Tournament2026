@@ -1,4 +1,4 @@
-from controllers.common import business_required, current_business, error, ok
+from controllers.common import access_denied, business_required, current_business, error, ok
 from store import store
 
 
@@ -23,8 +23,10 @@ def dismiss_recommendation(recommendation_id):
     recommendation = store.find("recommendations", recommendation_id)
     business = current_business()
 
-    if recommendation is None or recommendation["business_id"] != business["id"]:
+    if recommendation is None:
         return error("Recommendation not found", 404)
+    if recommendation["business_id"] != business["id"]:
+        return access_denied()
 
     updated_recommendation = store.update(
         "recommendations",

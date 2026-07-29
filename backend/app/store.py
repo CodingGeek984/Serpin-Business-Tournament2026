@@ -58,11 +58,26 @@ class FirestoreStore:
             }
             self.insert("tools", tool)
 
+    def _create_default_promotion_templates(self):
+        for name, template_type, default_budget, description in [
+            ("Скидка на чек", "discount", 5000, "Дайте клиенту скидку в процентах или фиксированной сумме."),
+            ("Штамп-карта 5+1", "stamp", 0, "Каждая шестая покупка в подарок для роста LTV."),
+            ("Счастливые часы", "time_discount", 2000, "Скидка в определённые часы для заполнения тихих периодов."),
+            ("Возврат клиента", "winback", 10000, "Сообщение клиентам, которые давно не возвращались."),
+        ]:
+            self.insert("promotion_templates", {
+                "name": name, "type": template_type, "default_budget": default_budget,
+                "description": description, "is_active": True,
+            })
+
     def all(self, collection):
         snapshots = list(self._collection(collection).stream())
 
         if collection == "tools" and not snapshots:
             self._create_default_tools()
+            snapshots = list(self._collection(collection).stream())
+        if collection == "promotion_templates" and not snapshots:
+            self._create_default_promotion_templates()
             snapshots = list(self._collection(collection).stream())
 
         return [self._item(snapshot) for snapshot in snapshots]
@@ -108,13 +123,14 @@ class FirestoreStore:
 class JsonStore:
     collections = ("users", "businesses", "tools", "favorites", "promotions",
                    "customers", "analytics", "recommendations", "notifications",
-                   "ai_chats", "ai_messages")
+                   "ai_chats", "ai_messages", "promotion_templates")
 
     def __init__(self):
         self.path = os.environ.get("SERPIN_DATA_FILE", os.path.join(os.path.dirname(__file__), "data.json"))
         self.lock = threading.RLock()
         self.data = self._load()
         self._seed_tools()
+        self._seed_promotion_templates()
 
     @staticmethod
     def now():
@@ -152,6 +168,20 @@ class JsonStore:
                                   "description": description, "short_description": description,
                                   "icon": "", "badge": "", "features": [], "is_active": True,
                                   "is_featured": False})
+
+    def _seed_promotion_templates(self):
+        if self.data["promotion_templates"]:
+            return
+        for name, template_type, default_budget, description in [
+            ("Скидка на чек", "discount", 5000, "Дайте клиенту скидку в процентах или фиксированной сумме."),
+            ("Штамп-карта 5+1", "stamp", 0, "Каждая шестая покупка в подарок для роста LTV."),
+            ("Счастливые часы", "time_discount", 2000, "Скидка в определённые часы для заполнения тихих периодов."),
+            ("Возврат клиента", "winback", 10000, "Сообщение клиентам, которые давно не возвращались."),
+        ]:
+            self.insert("promotion_templates", {
+                "name": name, "type": template_type, "default_budget": default_budget,
+                "description": description, "is_active": True,
+            })
 
     def all(self, collection):
         with self.lock:
