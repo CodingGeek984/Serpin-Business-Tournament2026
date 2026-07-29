@@ -1,97 +1,135 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import { MOCK_STATS, MOCK_PROMOTIONS, MOCK_CUSTOMERS, MOCK_REVENUE_DATA, MOCK_USER, PROMO_TEMPLATES } from '../constants/mockData';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import api from '../services/api';
+import { MOCK_STATS, MOCK_REVENUE_DATA, PROMO_TEMPLATES } from '../constants/mockData';
+import { useAuth } from './AuthContext';
+import { useNotification } from './NotificationContext';
 
 const UserContext = createContext();
 
 export const UserProvider = ({ children }) => {
-  // Load from LocalStorage or fallback to MOCK
-  const [userProfile, setUserProfile] = useState(() => {
-    const saved = localStorage.getItem('userProfile');
-    return saved ? JSON.parse(saved) : MOCK_USER;
-  });
+  const { isAuthenticated } = useAuth();
+  const { addNotification } = useNotification();
+  const [userProfile, setUserProfile] = useState(null);
+  const [promotions, setPromotions] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [stats, setStats] = useState(MOCK_STATS); // fallback to mock for now
+  const [revenueData, setRevenueData] = useState(MOCK_REVENUE_DATA); // fallback to mock
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [promotions, setPromotions] = useState(() => {
-    const saved = localStorage.getItem('promotions');
-    return saved ? JSON.parse(saved) : MOCK_PROMOTIONS;
-  });
-  
-  const [stats, setStats] = useState(() => {
-    const saved = localStorage.getItem('stats');
-    return saved ? JSON.parse(saved) : MOCK_STATS;
-  });
+  const fetchDashboardData = useCallback(async () => {
+    if (!isAuthenticated) return;
+    
+    setIsLoading(true);
+    try {
+      // 1. Fetch User / Business Profile
+      const businessRes = await api.get('/business').catch(() => ({ data: null }));
+      if (businessRes?.data) setUserProfile(businessRes.data);
 
-  const [customers, setCustomers] = useState(() => {
-    const saved = localStorage.getItem('customers');
-    return saved ? JSON.parse(saved) : MOCK_CUSTOMERS;
-  });
+      // 2. Fetch Promotions
+      const promosRes = await api.get('/promotions').catch(() => ({ data: [] }));
+      setPromotions(Array.isArray(promosRes?.data) ? promosRes.data : promosRes || []);
 
-  const [revenueData, setRevenueData] = useState(() => {
-    const saved = localStorage.getItem('revenueData');
-    return saved ? JSON.parse(saved) : MOCK_REVENUE_DATA;
-  });
+      // 3. Fetch Customers
+      const customersRes = await api.get('/customers').catch(() => ({ data: [] }));
+      setCustomers(Array.isArray(customersRes?.data) ? customersRes.data : customersRes || []);
 
-  // Save to LocalStorage on every change
-  useEffect(() => { localStorage.setItem('userProfile', JSON.stringify(userProfile)); }, [userProfile]);
-  useEffect(() => { localStorage.setItem('promotions', JSON.stringify(promotions)); }, [promotions]);
-  useEffect(() => { localStorage.setItem('stats', JSON.stringify(stats)); }, [stats]);
-  useEffect(() => { localStorage.setItem('customers', JSON.stringify(customers)); }, [customers]);
-  useEffect(() => { localStorage.setItem('revenueData', JSON.stringify(revenueData)); }, [revenueData]);
+      // 4. Fetch Analytics Summary
+      const statsRes = await api.get('/analytics/summary').catch(() => null);
+      if (statsRes?.data) {
+         // Transform backend stats format to frontend format if needed
+      }
+    } catch (error) {
+      console.error("Failed to load initial data", error);
+      addNotification("Не удалось загрузить данные дашборда", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isAuthenticated, addNotification]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   // Methods
-  const addPromotion = (promo) => {
-    setPromotions([{ ...promo, id: `p${Date.now()}` }, ...promotions]);
-    
-    // Update active promos stat
-    const newActiveCount = promotions.filter(p => p.status === 'active').length + (promo.status === 'active' ? 1 : 0);
-    setStats(prev => prev.map(s => s.id === 'active_promos' ? { ...s, value: newActiveCount.toString(), numericValue: newActiveCount } : s));
+  const addPromotion = async (promoData) => {
+    try {
+      const res = await api.post('/promotions', promoData);
+      const newPromo = res.data || res;
+      setPromotions([newPromo, ...promotions]);
+      addNotification("Акция успешно создана!", "success");
+      return { success: true, data: newPromo };
+    } catch (error) {
+      console.error("Failed to add promotion", error);
+      addNotification(error.message || "Ошибка при создании акции", "error");
+      throw error;
+    }
   };
 
-  const updatePromotionStatus = (id, status) => {
-    setPromotions(promotions.map(p => p.id === id ? { ...p, status } : p));
+  const updatePromotionStatus = async (id, status) => {
+    try {
+      await api.put(`/promotions/${id}`, { status });
+      setPromotions(promotions.map(p => p.id === id ? { ...p, status } : p));
+      addNotification(`Статус акции обновлен на ${status}`, "success");
+    } catch (error) {
+      console.error("Failed to update status", error);
+      addNotification("Ошибка при обновлении статуса", "error");
+      throw error;
+    }
+  };
+
+  const toggleIntegration = async (key) => {
+    setUserProfile(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        integrations: {
+          ...(prev.integrations || {}),
+          [key]: !(prev.integrations?.[key])
+        }
+      };
+    });
     
-    // Update stats
-    setTimeout(() => {
-      setPromotions(currentPromos => {
-        const newActiveCount = currentPromos.filter(p => p.status === 'active').length;
-        setStats(prev => prev.map(s => s.id === 'active_promos' ? { ...s, value: newActiveCount.toString(), numericValue: newActiveCount } : s));
-        return currentPromos;
+    try {
+      await api.put('/business', { 
+        integrations: { [key]: !userProfile?.integrations?.[key] } 
       });
-    }, 0);
+      addNotification("Статус интеграции обновлен", "success");
+    } catch (error) {
+      console.error("Failed to toggle integration", error);
+      addNotification("Ошибка при обновлении интеграции", "error");
+    }
   };
 
-  const toggleIntegration = (key) => {
-    setUserProfile(prev => ({
-      ...prev,
-      integrations: {
-        ...prev.integrations,
-        [key]: !prev.integrations[key]
-      }
-    }));
+  const scanPromoQR = async (promoId, qrData = "") => {
+    try {
+      await api.post('/analytics/record', { 
+        event_type: 'scan', 
+        promotion_id: promoId,
+        metadata: { qr: qrData }
+      });
+      
+      setPromotions(prev => prev.map(p => p.id === promoId ? { ...p, conversions: p.conversions + 1 } : p));
+      addNotification("QR-код успешно отсканирован", "success");
+      return { success: true };
+    } catch (error) {
+      console.error("Failed to scan QR", error);
+      addNotification("Ошибка при сканировании QR", "error");
+      throw error;
+    }
   };
 
-  const scanPromoQR = (promoId) => {
-    // Increase conversions for promo
-    setPromotions(prev => prev.map(p => p.id === promoId ? { ...p, conversions: p.conversions + 1 } : p));
-    
-    // Update overall revenue (simulation: avg 2500 tenge per conversion)
-    setStats(prev => prev.map(s => {
-      if (s.id === 'revenue') {
-        const newRev = s.numericValue + 2500;
-        return { ...s, numericValue: newRev, value: `${(newRev / 1000).toFixed(0)} 000 ₸` };
-      }
-      return s;
-    }));
-  };
-
-  const addCustomer = (customer) => {
-    setCustomers([{ ...customer, id: `c${Date.now()}` }, ...customers]);
-    setStats(prev => prev.map(s => {
-      if (s.id === 'new_clients') {
-        const newVal = s.numericValue + 1;
-        return { ...s, numericValue: newVal, value: newVal.toString() };
-      }
-      return s;
-    }));
+  const addCustomer = async (customerData) => {
+    try {
+      const res = await api.post('/customers', customerData);
+      const newCustomer = res.data || res;
+      setCustomers([newCustomer, ...customers]);
+      addNotification("Клиент успешно добавлен", "success");
+      return { success: true, data: newCustomer };
+    } catch (error) {
+      console.error("Failed to add customer", error);
+      addNotification(error.message || "Ошибка при добавлении клиента", "error");
+      throw error;
+    }
   };
 
   return (
@@ -101,12 +139,14 @@ export const UserProvider = ({ children }) => {
       promotions, 
       customers, 
       revenueData,
-      promoTemplates: PROMO_TEMPLATES,
+      promoTemplates: PROMO_TEMPLATES, 
+      isLoading,
       addPromotion, 
       updatePromotionStatus,
       toggleIntegration,
       scanPromoQR,
-      addCustomer
+      addCustomer,
+      refreshData: fetchDashboardData
     }}>
       {children}
     </UserContext.Provider>

@@ -1,33 +1,90 @@
-import React, { useState } from 'react';
-import { X, QrCode, Smartphone, CheckCircle, Gift } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, QrCode, Smartphone, CheckCircle, Gift, Camera } from 'lucide-react';
 import { useUser } from '../../../context/UserContext';
 import { useNotification } from '../../../context/NotificationContext';
 import Button from '../../common/Button/Button';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 
 const QRSimulatorModal = ({ isOpen, onClose, promo }) => {
   const { scanPromoQR } = useUser();
   const { addNotification } = useNotification();
-  const [status, setStatus] = useState('idle'); // idle, scanning, success
+  const [status, setStatus] = useState('idle'); // idle, scanning, success, camera
+  const scannerRef = useRef(null);
 
-  const handleScan = () => {
-    setStatus('scanning');
-    
-    // Simulate network delay
-    setTimeout(() => {
-      scanPromoQR(promo.id);
-      setStatus('success');
-      addNotification('Сканирование прошло успешно!', 'success');
+  useEffect(() => {
+    if (status === 'camera') {
+      const scanner = new Html5QrcodeScanner(
+        "qr-reader",
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        false
+      );
+
+      scanner.render(
+        (decodedText) => {
+          scanner.clear();
+          scannerRef.current = null;
+          handleRealScan(decodedText);
+        },
+        (error) => {
+          // ignore background scan errors
+        }
+      );
       
-      // Reset after showing success
+      scannerRef.current = scanner;
+
+      return () => {
+        if (scannerRef.current) {
+          scannerRef.current.clear().catch(console.error);
+        }
+      };
+    }
+  }, [status]);
+
+  const handleRealScan = async (qrData) => {
+    setStatus('scanning');
+    try {
+      await scanPromoQR(promo.id, qrData);
+      setStatus('success');
+      
       setTimeout(() => {
         setStatus('idle');
         onClose();
       }, 2500);
+    } catch (e) {
+      setStatus('idle');
+    }
+  };
+
+  const handleSimulateScan = async () => {
+    setStatus('scanning');
+    
+    // Simulate network delay for the fake scan
+    setTimeout(async () => {
+      try {
+        await scanPromoQR(promo.id, 'simulated_qr_data');
+        setStatus('success');
+        
+        setTimeout(() => {
+          setStatus('idle');
+          onClose();
+        }, 2500);
+      } catch (e) {
+        setStatus('idle');
+      }
     }, 1500);
   };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (scannerRef.current) {
+        scannerRef.current.clear().catch(() => {});
+      }
+    };
+  }, []);
 
   return (
     <AnimatePresence>
@@ -76,7 +133,7 @@ const QRSimulatorModal = ({ isOpen, onClose, promo }) => {
                 Наведите камеру на QR-код для получения {promo.type === 'stamp' ? 'штампа' : 'скидки'} по акции "{promo.title}"
               </p>
 
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-8 w-full flex flex-col items-center justify-center relative overflow-hidden">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-8 w-full flex flex-col items-center justify-center relative overflow-hidden min-h-[220px]">
                 <AnimatePresence mode="wait">
                   {status === 'success' ? (
                     <motion.div 
@@ -107,6 +164,17 @@ const QRSimulatorModal = ({ isOpen, onClose, promo }) => {
                       </div>
                       <p className="mt-4 text-[var(--color-brand-blue)] font-medium animate-pulse">Обработка...</p>
                     </motion.div>
+                  ) : status === 'camera' ? (
+                    <motion.div 
+                      key="camera"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="flex flex-col items-center w-full"
+                    >
+                       <div id="qr-reader" className="w-full"></div>
+                       <Button variant="ghost" size="sm" className="mt-2" onClick={() => setStatus('idle')}>Отмена</Button>
+                    </motion.div>
                   ) : (
                     <motion.div 
                       key="idle"
@@ -123,16 +191,29 @@ const QRSimulatorModal = ({ isOpen, onClose, promo }) => {
               </div>
 
               <div className="mt-auto w-full flex flex-col gap-3">
-                <Button 
-                  className="w-full py-4 text-base shadow-sm"
-                  onClick={handleScan}
-                  disabled={status !== 'idle'}
-                >
-                  {status === 'idle' ? 'Эмулировать сканирование' : 'Подождите...'}
-                </Button>
+                {status !== 'camera' && (
+                  <>
+                    <Button 
+                      className="w-full py-3 text-base shadow-sm gap-2"
+                      onClick={() => setStatus('camera')}
+                      disabled={status !== 'idle'}
+                    >
+                      <Camera className="w-5 h-5" />
+                      Открыть камеру
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      className="w-full py-3 text-base shadow-sm"
+                      onClick={handleSimulateScan}
+                      disabled={status !== 'idle'}
+                    >
+                      {status === 'idle' ? 'Эмулировать сканирование' : 'Подождите...'}
+                    </Button>
+                  </>
+                )}
                 
                 {promo.type === 'stamp' && (
-                  <div className="w-full bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                  <div className="w-full bg-white p-4 rounded-xl border border-gray-200 shadow-sm mt-2">
                     <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wider">Карта лояльности</p>
                     <div className="flex justify-between">
                       {[1,2,3,4,5,6].map(i => (

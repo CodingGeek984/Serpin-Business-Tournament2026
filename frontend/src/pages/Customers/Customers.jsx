@@ -99,42 +99,49 @@ const Customers = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {filteredCustomers.map(customer => (
-                    <tr 
-                      key={customer.id} 
-                      onClick={() => setSelectedCustomer(customer)}
-                      className={twMerge(clsx(
-                        "hover:bg-blue-50/50 transition-colors cursor-pointer",
-                        selectedCustomer?.id === customer.id && "bg-blue-50"
-                      ))}
-                    >
-                      <td className="px-6 py-4">
-                        <div className="font-medium text-gray-900">{customer.name}</div>
-                        <div className="text-xs text-gray-500">{customer.phone}</div>
-                      </td>
-                      <td className="px-6 py-4">{getStatusBadge(customer.status)}</td>
-                      <td className="px-6 py-4">{customer.visits}</td>
-                      <td className="px-6 py-4 font-medium">{customer.totalSpent.toLocaleString()} ₸</td>
-                      <td className="px-6 py-4">{customer.lastVisit || 'Нет данных'}</td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); handleWhatsApp(customer); }}
-                            className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
-                            title="Написать в WhatsApp"
-                          >
-                            <MessageCircle className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {filteredCustomers.length === 0 && (
+                  {/* eslint-disable-next-line react/prop-types */}
+                  {/* In a real project isLoading should be destructured from useUser() */}
+                  {filteredCustomers.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
-                        Клиенты не найдены
+                      <td colSpan="6" className="px-6 py-12 text-center text-gray-500 flex flex-col items-center">
+                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3 text-gray-400">
+                           <Search className="w-6 h-6" />
+                        </div>
+                        <p>Клиенты не найдены</p>
+                        <p className="text-xs mt-1">Попробуйте изменить фильтры или добавить нового клиента.</p>
                       </td>
                     </tr>
+                  ) : (
+                    filteredCustomers.map(customer => (
+                      <tr 
+                        key={customer.id} 
+                        onClick={() => setSelectedCustomer(customer)}
+                        className={twMerge(clsx(
+                          "hover:bg-blue-50/50 transition-colors cursor-pointer",
+                          selectedCustomer?.id === customer.id && "bg-blue-50"
+                        ))}
+                      >
+                        <td className="px-6 py-4">
+                          <div className="font-medium text-gray-900">{customer.name}</div>
+                          <div className="text-xs text-gray-500">{customer.phone}</div>
+                        </td>
+                        <td className="px-6 py-4">{getStatusBadge(customer.status)}</td>
+                        <td className="px-6 py-4">{customer.visits}</td>
+                        <td className="px-6 py-4 font-medium">{customer.totalSpent.toLocaleString()} ₸</td>
+                        <td className="px-6 py-4">{customer.lastVisit || 'Нет данных'}</td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); handleWhatsApp(customer); }}
+                              className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
+                              title="Написать в WhatsApp"
+                            >
+                              <MessageCircle className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
                   )}
                 </tbody>
               </table>
