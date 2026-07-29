@@ -1,0 +1,56 @@
+import React from 'react';
+import { Search, Bell, MessageCircle, User } from 'lucide-react';
+import { useAuth } from '../../../context/AuthContext';
+import { useNotification } from '../../../context/NotificationContext';
+
+const Topbar = () => {
+  const { user } = useAuth();
+  const { notifications } = useNotification();
+
+  return (
+    <header className="sticky top-0 z-50 flex h-14 items-center justify-between bg-white px-4 shadow-sm border-b border-gray-200/60">
+      {/* Left section: Logo and Search */}
+      <div className="flex items-center gap-4 w-1/3">
+        <div className="text-xl font-bold text-[var(--color-brand-blue)]">Serpin</div>
+        <div className="hidden md:flex items-center bg-[var(--color-bg-primary)] rounded-full px-3 py-1.5 w-full max-w-sm">
+          <Search className="h-4 w-4 text-gray-500" />
+          <input 
+            type="text" 
+            placeholder="Поиск..." 
+            className="bg-transparent border-none outline-none ml-2 text-sm w-full"
+          />
+        </div>
+      </div>
+
+      {/* Middle section: Navigation Icons (FB style) */}
+      <div className="hidden md:flex items-center justify-center gap-2 w-1/3">
+        {/* We can add center tabs here later if needed */}
+      </div>
+
+      {/* Right section: Actions and Profile */}
+      <div className="flex items-center justify-end gap-2 w-1/3">
+        <button className="p-2 rounded-full bg-[var(--color-bg-primary)] hover:bg-[var(--color-hover-bg)] transition-colors relative">
+          <MessageCircle className="h-5 w-5 text-gray-700" />
+        </button>
+        <button className="p-2 rounded-full bg-[var(--color-bg-primary)] hover:bg-[var(--color-hover-bg)] transition-colors relative">
+          <Bell className="h-5 w-5 text-gray-700" />
+          {notifications.length > 0 && (
+            <span className="absolute top-0 right-0 h-4 w-4 bg-red-500 rounded-full text-white text-[10px] flex items-center justify-center border-2 border-white">
+              {notifications.length}
+            </span>
+          )}
+        </button>
+        <div className="ml-2 flex items-center gap-2 cursor-pointer p-1 pr-3 rounded-full hover:bg-[var(--color-bg-primary)] transition-colors">
+          <img 
+            src={user?.avatar || 'https://i.pravatar.cc/150'} 
+            alt="Profile" 
+            className="h-8 w-8 rounded-full border border-gray-200"
+          />
+          <span className="text-sm font-medium hidden lg:block">{user?.name}</span>
+        </div>
+      </div>
+    </header>
+  );
+};
+
+export default Topbar;
