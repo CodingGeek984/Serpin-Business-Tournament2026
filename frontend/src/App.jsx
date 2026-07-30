@@ -9,17 +9,17 @@ import { NotificationProvider } from './context/NotificationContext';
 function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <UserProvider>
-          <AIProvider>
-            <NotificationProvider>
+      <NotificationProvider>
+        <AuthProvider>
+          <UserProvider>
+            <AIProvider>
               <div className="min-h-screen bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] font-sans">
                 <AppRoutes />
               </div>
-            </NotificationProvider>
-          </AIProvider>
-        </UserProvider>
-      </AuthProvider>
+            </AIProvider>
+          </UserProvider>
+        </AuthProvider>
+      </NotificationProvider>
     </ThemeProvider>
   );
 }

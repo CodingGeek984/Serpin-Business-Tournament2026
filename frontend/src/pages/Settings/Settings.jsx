@@ -1,38 +1,50 @@
-import React, { useState } from 'react';
-import { useUser } from '../../context/UserContext';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 import { Card, CardContent } from '../../components/common/Card/Card';
 import Button from '../../components/common/Button/Button';
-import { CreditCard, MessageCircle, Upload, Lock } from 'lucide-react';
+import { CreditCard, MessageCircle, Upload, Lock, User, Briefcase, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import api from '../../services/api';
 
 const Settings = () => {
-  const { userProfile, toggleIntegration } = useUser();
+  const { logout } = useAuth();
   const { addNotification } = useNotification();
+  
+  const [activeTab, setActiveTab] = useState('personal');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Profile Form State
   const [profileForm, setProfileForm] = useState({
-    name: userProfile?.name || '',
-    email: userProfile?.email || '',
+    full_name: '',
+    email: '',
+    phone: '',
+    business_name: '',
     currency: 'KZT',
     timezone: 'Asia/Almaty'
   });
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
-  // Password Form State
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
     confirmPassword: ''
   });
-  const [isSavingPassword, setIsSavingPassword] = useState(false);
-  const [passwordError, setPasswordError] = useState('');
 
-  const handleToggle = (key, name) => {
-    toggleIntegration(key);
-    const isEnabled = !userProfile.integrations[key];
-    addNotification(`Интеграция ${name} ${isEnabled ? 'подключена' : 'отключена'}`, isEnabled ? 'success' : 'info');
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+      const res = await api.get('/user/profile');
+      const data = res.data || res;
+      setProfileForm(prev => ({ ...prev, ...data }));
+    } catch (err) {
+      addNotification('Ошибка загрузки профиля', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleProfileChange = (e) => {
@@ -41,213 +53,195 @@ const Settings = () => {
 
   const handlePasswordChange = (e) => {
     setPasswordForm({ ...passwordForm, [e.target.name]: e.target.value });
-    if (passwordError) setPasswordError('');
   };
 
-  const saveProfile = (e) => {
+  const saveProfile = async (e) => {
     e.preventDefault();
-    setIsSavingProfile(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsSavingProfile(false);
-      addNotification('Профиль бизнеса успешно обновлен', 'success');
-    }, 800);
+    setIsSaving(true);
+    try {
+      await api.put('/user/profile', profileForm);
+      addNotification('Данные успешно сохранены', 'success');
+    } catch (err) {
+      addNotification(err.message || 'Ошибка обновления', 'error');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const savePassword = (e) => {
+  const savePassword = async (e) => {
     e.preventDefault();
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setPasswordError('Новые пароли не совпадают');
+      addNotification('Новые пароли не совпадают', 'error');
       return;
     }
-    if (passwordForm.newPassword.length < 6) {
-      setPasswordError('Пароль должен содержать минимум 6 символов');
-      return;
-    }
-
-    setIsSavingPassword(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsSavingPassword(false);
-      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    setIsSaving(true);
+    try {
+      await api.put('/user/change-password', {
+        old_password: passwordForm.currentPassword,
+        new_password: passwordForm.newPassword
+      });
       addNotification('Пароль успешно изменен', 'success');
-    }, 800);
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (err) {
+      addNotification(err.message || 'Ошибка изменения пароля', 'error');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleLogoUpload = () => {
-    // In a real app, this would trigger an <input type="file" />
-    addNotification('Функция загрузки логотипа (Демо)', 'info');
+  const deleteAccount = async () => {
+    if (!window.confirm("Вы уверены? Это действие навсегда удалит ваш аккаунт и все данные!")) return;
+    try {
+      await api.delete('/user/account');
+      addNotification('Аккаунт удален', 'success');
+      logout();
+    } catch (err) {
+      addNotification(err.message || 'Ошибка удаления', 'error');
+    }
   };
+
+  const tabs = [
+    { id: 'personal', label: 'Личные данные', icon: <User className="w-4 h-4 mr-2" /> },
+    { id: 'business', label: 'Мой бизнес', icon: <Briefcase className="w-4 h-4 mr-2" /> },
+    { id: 'security', label: 'Безопасность', icon: <Lock className="w-4 h-4 mr-2" /> },
+  ];
+
+  if (isLoading) {
+    return <div className="flex justify-center p-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-brand-blue)]"></div></div>;
+  }
 
   return (
-    <div className="flex flex-col gap-8 max-w-4xl mx-auto pb-10">
-      <div>
-        <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Настройки</h1>
-        <p className="text-sm text-gray-500 mt-1">Управление профилем, безопасностью и интеграциями</p>
+    <div className="flex flex-col md:flex-row gap-8 max-w-5xl mx-auto pb-10">
+      
+      {/* Sidebar Navigation */}
+      <div className="md:w-64 shrink-0">
+        <h1 className="text-2xl font-bold text-[var(--color-text-primary)] mb-6">Профиль</h1>
+        <div className="flex flex-col gap-1">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={twMerge(clsx(
+                "flex items-center w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors text-left",
+                activeTab === tab.id 
+                  ? "bg-[var(--color-brand-blue)] text-white shadow-md" 
+                  : "text-gray-600 hover:bg-gray-100"
+              ))}
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Profile Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-1">
-          <h3 className="font-semibold text-gray-900 mb-2">Профиль бизнеса</h3>
-          <p className="text-sm text-gray-500">Основная информация о вашем заведении, валюта и часовой пояс.</p>
-        </div>
-        <Card className="md:col-span-2">
-          <CardContent className="p-6 flex flex-col gap-6">
-            <div className="flex items-center gap-6">
-              <div className="relative">
-                <img src={userProfile?.avatar || 'https://via.placeholder.com/150'} alt="Logo" className="w-20 h-20 rounded-full border border-gray-200 object-cover" />
-                <button
-                  onClick={handleLogoUpload}
-                  className="absolute bottom-0 right-0 p-1.5 bg-white border border-gray-200 rounded-full shadow-sm hover:bg-gray-50 text-[var(--color-brand-blue)]"
-                >
-                  <Upload className="w-4 h-4" />
-                </button>
-              </div>
-              <div>
-                <h4 className="text-sm font-semibold text-gray-900">Логотип компании</h4>
-                <p className="text-xs text-gray-500 mt-1 mb-2">Рекомендуемый размер: 512x512px. Форматы: JPG, PNG.</p>
-                <Button variant="outline" size="sm" onClick={handleLogoUpload}>Изменить логотип</Button>
-              </div>
-            </div>
+      {/* Content Area */}
+      <div className="flex-1 mt-12 md:mt-0">
+        
+        {/* Personal Info Tab */}
+        {activeTab === 'personal' && (
+          <Card className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <CardContent className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Личные данные</h3>
+              <form onSubmit={saveProfile} className="flex flex-col gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">ФИО</label>
+                  <input type="text" name="full_name" value={profileForm.full_name} onChange={handleProfileChange} required className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-brand-blue)] outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input type="email" name="email" value={profileForm.email} onChange={handleProfileChange} required className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-brand-blue)] outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Телефон</label>
+                  <input type="tel" name="phone" value={profileForm.phone} onChange={handleProfileChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-brand-blue)] outline-none" />
+                </div>
+                
+                <div className="flex justify-end mt-4">
+                  <Button type="submit" disabled={isSaving}>{isSaving ? 'Сохранение...' : 'Сохранить изменения'}</Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        )}
 
-            <form onSubmit={saveProfile} className="flex flex-col gap-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Business Tab */}
+        {activeTab === 'business' && (
+          <Card className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <CardContent className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Мой бизнес</h3>
+              <form onSubmit={saveProfile} className="flex flex-col gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Название бизнеса</label>
-                  <input type="text" name="name" value={profileForm.name} onChange={handleProfileChange} required className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-brand-blue)] outline-none transition-shadow" />
+                  <input type="text" name="business_name" value={profileForm.business_name} onChange={handleProfileChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-brand-blue)] outline-none" />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email для уведомлений</label>
-                  <input type="email" name="email" value={profileForm.email} onChange={handleProfileChange} required className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-brand-blue)] outline-none transition-shadow" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Валюта</label>
+                    <select name="currency" value={profileForm.currency} onChange={handleProfileChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-brand-blue)] outline-none bg-white">
+                      <option value="KZT">Тенге (₸)</option>
+                      <option value="RUB">Рубль (₽)</option>
+                      <option value="USD">Доллар ($)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Часовой пояс</label>
+                    <select name="timezone" value={profileForm.timezone} onChange={handleProfileChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-brand-blue)] outline-none bg-white">
+                      <option value="Asia/Almaty">Asia/Almaty (UTC+5)</option>
+                      <option value="Asia/Astana">Asia/Astana (UTC+5)</option>
+                      <option value="Europe/Moscow">Europe/Moscow (UTC+3)</option>
+                    </select>
+                  </div>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Валюта</label>
-                  <select name="currency" value={profileForm.currency} onChange={handleProfileChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-brand-blue)] outline-none transition-shadow bg-white">
-                    <option value="KZT">Тенге (₸)</option>
-                    <option value="RUB">Рубль (₽)</option>
-                    <option value="USD">Доллар ($)</option>
-                  </select>
+                <div className="flex justify-end mt-4">
+                  <Button type="submit" disabled={isSaving}>{isSaving ? 'Сохранение...' : 'Сохранить изменения'}</Button>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Часовой пояс</label>
-                  <select name="timezone" value={profileForm.timezone} onChange={handleProfileChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-brand-blue)] outline-none transition-shadow bg-white">
-                    <option value="Asia/Almaty">Asia/Almaty (UTC+5)</option>
-                    <option value="Asia/Astana">Asia/Astana (UTC+5)</option>
-                    <option value="Europe/Moscow">Europe/Moscow (UTC+3)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex justify-end mt-2">
-                <Button type="submit" disabled={isSavingProfile}>
-                  {isSavingProfile ? 'Сохранение...' : 'Сохранить изменения'}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-
-      <hr className="border-gray-100" />
-
-      {/* Security Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-1">
-          <h3 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
-            <Lock className="w-4 h-4 text-gray-500" />
-            Безопасность
-          </h3>
-          <p className="text-sm text-gray-500">Обновите пароль для защиты вашего аккаунта.</p>
-        </div>
-        <Card className="md:col-span-2">
-          <CardContent className="p-6">
-            <form onSubmit={savePassword} className="flex flex-col gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Текущий пароль</label>
-                <input type="password" name="currentPassword" value={passwordForm.currentPassword} onChange={handlePasswordChange} required className="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-brand-blue)] outline-none transition-shadow" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Новый пароль</label>
-                <input type="password" name="newPassword" value={passwordForm.newPassword} onChange={handlePasswordChange} required className="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-brand-blue)] outline-none transition-shadow" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Подтвердите новый пароль</label>
-                <input type="password" name="confirmPassword" value={passwordForm.confirmPassword} onChange={handlePasswordChange} required className="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-brand-blue)] outline-none transition-shadow" />
-              </div>
-
-              {passwordError && (
-                <p className="text-sm text-red-500 font-medium">{passwordError}</p>
-              )}
-
-              <div className="flex justify-start mt-2">
-                <Button type="submit" disabled={isSavingPassword || !passwordForm.currentPassword}>
-                  {isSavingPassword ? 'Обновление...' : 'Обновить пароль'}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-
-      <hr className="border-gray-100" />
-
-      {/* Integrations Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-1">
-          <h3 className="font-semibold text-gray-900 mb-2">Интеграции</h3>
-          <p className="text-sm text-gray-500">Подключение внешних сервисов для автоматизации.</p>
-        </div>
-        <div className="md:col-span-2 flex flex-col gap-4">
-
-          {/* Kaspi Integration */}
-          <Card className={twMerge(clsx("transition-colors", userProfile?.integrations?.kaspi ? "border-emerald-500 ring-1 ring-emerald-500" : ""))}>
-            <CardContent className="p-5 flex items-start sm:items-center justify-between flex-col sm:flex-row gap-4">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0">
-                  <CreditCard className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="font-semibold text-gray-900 flex items-center gap-2">
-                    Kaspi Pay (Demo)
-                    {userProfile?.integrations?.kaspi && <span className="bg-emerald-100 text-emerald-700 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Активно</span>}
-                  </h4>
-                  <p className="text-sm text-gray-500 mt-1 max-w-sm">Автоматическое начисление бонусов и штампов при оплате клиентом через Kaspi QR.</p>
-                </div>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                <input type="checkbox" className="sr-only peer" checked={userProfile?.integrations?.kaspi || false} onChange={() => handleToggle('kaspi', 'Kaspi Pay')} />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
-              </label>
+              </form>
             </CardContent>
           </Card>
+        )}
 
-          {/* WhatsApp Integration */}
-          <Card className={twMerge(clsx("transition-colors", userProfile?.integrations?.whatsapp ? "border-emerald-500 ring-1 ring-emerald-500" : ""))}>
-            <CardContent className="p-5 flex items-start sm:items-center justify-between flex-col sm:flex-row gap-4">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center shrink-0">
-                  <MessageCircle className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="font-semibold text-gray-900 flex items-center gap-2">
-                    WhatsApp Business API (Demo)
-                    {userProfile?.integrations?.whatsapp && <span className="bg-emerald-100 text-emerald-700 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Активно</span>}
-                  </h4>
-                  <p className="text-sm text-gray-500 mt-1 max-w-sm">Автоматическая рассылка "уснувшим" клиентам и рассылка цифровых чеков.</p>
-                </div>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                <input type="checkbox" className="sr-only peer" checked={userProfile?.integrations?.whatsapp || false} onChange={() => handleToggle('whatsapp', 'WhatsApp Business API')} />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
-              </label>
-            </CardContent>
-          </Card>
+        {/* Security Tab */}
+        {activeTab === 'security' && (
+          <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <Card>
+              <CardContent className="p-6">
+                <h3 className="text-lg font-semibold mb-4">Смена пароля</h3>
+                <form onSubmit={savePassword} className="flex flex-col gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Текущий пароль</label>
+                    <input type="password" name="currentPassword" value={passwordForm.currentPassword} onChange={handlePasswordChange} required className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-brand-blue)] outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Новый пароль</label>
+                    <input type="password" name="newPassword" value={passwordForm.newPassword} onChange={handlePasswordChange} required minLength="6" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-brand-blue)] outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Подтвердите новый пароль</label>
+                    <input type="password" name="confirmPassword" value={passwordForm.confirmPassword} onChange={handlePasswordChange} required minLength="6" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-brand-blue)] outline-none" />
+                  </div>
+                  
+                  <div className="flex justify-start mt-2">
+                    <Button type="submit" disabled={isSaving || !passwordForm.currentPassword}>{isSaving ? 'Обновление...' : 'Обновить пароль'}</Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
 
-        </div>
+            <Card className="border-red-100">
+              <CardContent className="p-6">
+                <h3 className="text-lg font-semibold text-red-600 mb-2">Опасная зона</h3>
+                <p className="text-sm text-gray-500 mb-4">После удаления аккаунта пути назад не будет. Пожалуйста, будьте уверены.</p>
+                <Button variant="outline" onClick={deleteAccount} className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300">
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Удалить аккаунт
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
       </div>
     </div>
   );

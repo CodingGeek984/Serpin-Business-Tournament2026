@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/common/Card/Card';
 import Button from '../../components/common/Button/Button';
 import { useAuth } from '../../context/AuthContext';
-import { api } from '../../services/api';
+import api from '../../services/api';
 import { Database, Plus, Edit2, Trash2, Users, Building, Activity } from 'lucide-react';
 
 const Admin = () => {

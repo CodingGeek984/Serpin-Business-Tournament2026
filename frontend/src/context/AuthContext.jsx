@@ -30,21 +30,31 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      // Temporary fallback to mock data if backend isn't ready
-      // const response = await api.post('/auth/login', { email, password });
-      // const { token, user } = response.data;
+      const response = await api.post('/auth/login', { email, password });
+      const { access_token, user: userData } = response.data || response;
 
-      // MOCK LOGIN FOR NOW to prevent breaking the flow before backend DB is fully seeded
-      const token = "mock_jwt_token_12345";
-      const userData = MOCK_USER;
-
-      localStorage.setItem('token', token);
+      localStorage.setItem('token', access_token);
       setUser(userData);
       setIsAuthenticated(true);
       return { success: true };
     } catch (error) {
       console.error("Login failed", error);
       return { success: false, error: error.message };
+    }
+  };
+
+  const register = async (data) => {
+    try {
+      const response = await api.post('/auth/register', data);
+      const { access_token, user: userData } = response.data || response;
+
+      localStorage.setItem('token', access_token);
+      setUser(userData);
+      setIsAuthenticated(true);
+      return { success: true };
+    } catch (error) {
+      console.error("Registration failed", error);
+      throw error;
     }
   };
 
@@ -60,7 +70,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, isLoading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

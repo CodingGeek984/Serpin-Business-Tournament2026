@@ -3,7 +3,7 @@ import AIChat from '../../components/ai/AIChat/AIChat';
 import { Sparkles, TrendingUp, Lightbulb } from 'lucide-react';
 import { Card, CardContent } from '../../components/common/Card/Card';
 import { motion } from 'framer-motion';
-import { api } from '../../services/api';
+import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
 const containerVariants = {
