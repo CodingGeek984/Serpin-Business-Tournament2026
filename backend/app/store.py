@@ -14,95 +14,180 @@ from uuid import uuid4
 
 
 class FirestoreStore:
-    """Firestore implementation with the same repository API as ``JsonStore``."""
+    """Firestore REST implementation bypassing gRPC and clock skew."""
 
     def __init__(self, service_account_path=None, project_id=None):
-        import firebase_admin
-        from firebase_admin import credentials, firestore
-
-        if not firebase_admin._apps:
-            options = {"projectId": project_id} if project_id else None
-            credential = credentials.Certificate(service_account_path) if service_account_path else None
-            firebase_admin.initialize_app(credential, options)
-        self.db = firestore.client()
-
+        import json, requests, jwt, time
+        from email.utils import parsedate_to_datetime
+        
+        self.project_id = project_id
+        self.base_url = f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/(default)/documents"
+        self._cache = {}  # In-memory cache to speed up reads
+        
+        # 1. Fetch real current time from Google to avoid 2026 skew
+        time_res = requests.head("https://oauth2.googleapis.com/token")
+        real_now = int(parsedate_to_datetime(time_res.headers["Date"]).timestamp())
+        
+        with open(service_account_path) as f:
+            sa = json.load(f)
+            
+        payload = {
+            "iss": sa["client_email"], "sub": sa["client_email"],
+            "aud": "https://oauth2.googleapis.com/token",
+            "iat": real_now, "exp": real_now + 3600,
+            "scope": "https://www.googleapis.com/auth/datastore"
+        }
+        encoded_jwt = jwt.encode(payload, sa["private_key"], algorithm="RS256")
+        res = requests.post("https://oauth2.googleapis.com/token", data={
+            "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
+            "assertion": encoded_jwt
+        }).json()
+        self.token = res.get("access_token")
+        self.headers = {"Authorization": f"Bearer {self.token}"}
+        
     @staticmethod
     def now():
         return datetime.now(timezone.utc).isoformat()
 
     @staticmethod
-    def _item(snapshot):
-        return {"id": snapshot.id, **snapshot.to_dict()}
+    def dict_to_rest_val(v):
+        if isinstance(v, str): return {"stringValue": v}
+        if isinstance(v, bool): return {"booleanValue": v}
+        if isinstance(v, int): return {"integerValue": str(v)}
+        if isinstance(v, float): return {"doubleValue": float(v)}
+        if isinstance(v, list): return {"arrayValue": {"values": [FirestoreStore.dict_to_rest_val(x) for x in v]}}
+        if isinstance(v, dict): return {"mapValue": {"fields": FirestoreStore.dict_to_rest(v)}}
+        if v is None: return {"nullValue": None}
+        return {"stringValue": str(v)}
 
-    def _collection(self, collection):
-        return self.db.collection(collection)
+    @staticmethod
+    def dict_to_rest(d):
+        return {k: FirestoreStore.dict_to_rest_val(v) for k, v in d.items()}
+
+    @staticmethod
+    def rest_val_to_dict(v):
+        if "stringValue" in v: return v["stringValue"]
+        if "integerValue" in v: return int(v["integerValue"])
+        if "doubleValue" in v: return float(v["doubleValue"])
+        if "booleanValue" in v: return v["booleanValue"]
+        if "arrayValue" in v: return [FirestoreStore.rest_val_to_dict(x) for x in v["arrayValue"].get("values", [])]
+        if "mapValue" in v: return FirestoreStore.rest_to_dict(v["mapValue"].get("fields", {}))
+        if "nullValue" in v: return None
+        return None
+
+    @staticmethod
+    def rest_to_dict(fields):
+        return {k: FirestoreStore.rest_val_to_dict(v) for k, v in fields.items()}
+        
+    def _item(self, document):
+        if not document or "name" not in document: return None
+        doc_id = document["name"].split("/")[-1]
+        data = self.rest_to_dict(document.get("fields", {}))
+        return {"id": doc_id, **data}
 
     def _create_default_tools(self):
-        """Create the initial tool catalog when Firestore has no tools yet."""
         for name, slug, category, description in [
             ("CRM-клиенты", "crm", "Продажи", "Ведите базу клиентов и историю визитов."),
             ("Промо-акции", "promotions", "Маркетинг", "Создавайте акции и промокоды."),
             ("Аналитика", "analytics", "Аналитика", "Следите за выручкой и заказами."),
             ("AI-помощник", "ai-assistant", "Автоматизация", "Получайте идеи для роста бизнеса."),
         ]:
-            tool = {
-                "name": name,
-                "slug": slug,
-                "category": category,
-                "description": description,
-                "short_description": description,
-                "icon": "",
-                "badge": "",
-                "features": [],
-                "is_active": True,
-                "is_featured": False,
-            }
-            self.insert("tools", tool)
+            self.insert("tools", {
+                "name": name, "slug": slug, "category": category,
+                "description": description, "short_description": description,
+                "icon": "", "badge": "", "features": [],
+                "is_active": True, "is_featured": False,
+            })
+            
+        for name, slug, template_type, description in [
+            ("Приведи подругу", "bring-a-friend", "referral", "Дайте бонус обоим клиентам за рекомендацию."),
+            ("Распродажа остатков", "clearance-sale", "discount", "Запустите ограниченную по времени распродажу."),
+            ("Закрытая распродажа для постоянных клиентов", "private-sale", "discount", "Эксклюзивная акция для лояльных покупателей."),
+        ]:
+            self.insert("promotion_templates", {
+                "name": name, "slug": slug, "type": template_type,
+                "default_budget": 0, "description": description, "is_active": True,
+            })
 
     def all(self, collection):
-        snapshots = list(self._collection(collection).stream())
+        if collection in self._cache:
+            return list(self._cache[collection].values())
 
-        if collection == "tools" and not snapshots:
+        import requests
+        res = requests.get(f"{self.base_url}/{collection}", headers=self.headers).json()
+        documents = [self._item(doc) for doc in res.get("documents", []) if self._item(doc)]
+        
+        if collection == "tools" and not documents:
             self._create_default_tools()
-            snapshots = list(self._collection(collection).stream())
-
-        return [self._item(snapshot) for snapshot in snapshots]
+            res = requests.get(f"{self.base_url}/{collection}", headers=self.headers).json()
+            documents = [self._item(doc) for doc in res.get("documents", []) if self._item(doc)]
+            
+        if collection == "promotion_templates" and not documents:
+            self._create_default_tools()
+            res = requests.get(f"{self.base_url}/{collection}", headers=self.headers).json()
+            documents = [self._item(doc) for doc in res.get("documents", []) if self._item(doc)]
+            
+        self._cache[collection] = {doc["id"]: doc for doc in documents}
+        return list(self._cache[collection].values())
 
     def find(self, collection, item_id):
-        snapshot = self._collection(collection).document(str(item_id)).get()
-        return self._item(snapshot) if snapshot.exists else None
+        import requests
+        res = requests.get(f"{self.base_url}/{collection}/{item_id}", headers=self.headers)
+        if res.status_code != 200: return None
+        return self._item(res.json())
 
     def first(self, collection, **filters):
         results = self.filter(collection, **filters)
         return results[0] if results else None
 
     def filter(self, collection, **filters):
-        query = self._collection(collection)
-        for field, value in filters.items():
-            query = query.where(field, "==", value)
-        return [self._item(snapshot) for snapshot in query.stream()]
+        # Local filter since REST API simple queries are complex
+        all_items = self.all(collection)
+        results = []
+        for item in all_items:
+            if all(item.get(k) == v for k, v in filters.items()):
+                results.append(item)
+        return results
 
     def insert(self, collection, values):
-        reference = self._collection(collection).document()
+        import requests
+        from uuid import uuid4
+        item_id = str(uuid4())
         item = {"created_at": self.now(), **values}
-        reference.set(item)
-        return {"id": reference.id, **item}
+        url = f"{self.base_url}/{collection}/{item_id}"
+        payload = {"fields": self.dict_to_rest(item)}
+        requests.patch(url, headers=self.headers, json=payload)
+        
+        doc = {"id": item_id, **item}
+        if collection in self._cache:
+            self._cache[collection][item_id] = doc
+        return doc
 
     def update(self, collection, item_id, values):
-        reference = self._collection(collection).document(str(item_id))
-        if not reference.get().exists:
-            return None
-        updated = {**values, "updated_at": self.now()}
-        reference.update(updated)
-        return {"id": str(item_id), **reference.get().to_dict()}
+        import requests
+        item = self.find(collection, item_id)
+        if not item: return None
+        updated = {**item, **values, "updated_at": self.now()}
+        if "id" in updated:
+            del updated["id"] # don't upload id as a field
+            
+        url = f"{self.base_url}/{collection}/{item_id}"
+        payload = {"fields": self.dict_to_rest(updated)}
+        requests.patch(url, headers=self.headers, json=payload)
+        
+        doc = {"id": str(item_id), **updated}
+        if collection in self._cache:
+            self._cache[collection][str(item_id)] = doc
+        return doc
 
     def delete(self, collection, item_id):
-        reference = self._collection(collection).document(str(item_id))
-        snapshot = reference.get()
-        if not snapshot.exists:
-            return None
-        item = self._item(snapshot)
-        reference.delete()
+        import requests
+        item = self.find(collection, item_id)
+        if not item: return None
+        requests.delete(f"{self.base_url}/{collection}/{item_id}", headers=self.headers)
+        
+        if collection in self._cache and str(item_id) in self._cache[collection]:
+            del self._cache[collection][str(item_id)]
         return item
 
 
