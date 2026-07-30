@@ -4,9 +4,10 @@ import { useAuth } from '../../../context/AuthContext';
 import { useNotification } from '../../../context/NotificationContext';
 import { Link } from 'react-router-dom';
 
+import NotificationBell from './NotificationBell';
+
 const Topbar = () => {
   const { user } = useAuth();
-  const { notifications } = useNotification();
 
   return (
     <header className="sticky top-0 z-50 flex h-14 items-center justify-between bg-white px-4 shadow-sm border-b border-gray-200/60">
@@ -33,14 +34,7 @@ const Topbar = () => {
         <button className="p-2 rounded-full bg-[var(--color-bg-primary)] hover:bg-[var(--color-hover-bg)] transition-colors relative">
           <MessageCircle className="h-5 w-5 text-gray-700" />
         </button>
-        <Link to="/notifications" className="p-2 rounded-full bg-[var(--color-bg-primary)] hover:bg-[var(--color-hover-bg)] transition-colors relative block">
-          <Bell className="h-5 w-5 text-gray-700" />
-          {notifications.length > 0 && (
-            <span className="absolute top-0 right-0 h-4 w-4 bg-red-500 rounded-full text-white text-[10px] flex items-center justify-center border-2 border-white">
-              {notifications.length}
-            </span>
-          )}
-        </Link>
+        <NotificationBell />
         <Link to="/settings" className="ml-2 flex items-center gap-2 cursor-pointer p-1 pr-3 rounded-full hover:bg-[var(--color-bg-primary)] transition-colors">
           <img 
             src={user?.avatar || 'https://i.pravatar.cc/150'} 

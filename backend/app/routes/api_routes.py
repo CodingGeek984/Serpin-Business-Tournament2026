@@ -101,6 +101,7 @@ def create_recommendation_routes():
 def create_notification_routes():
     routes = Blueprint("notifications", __name__, url_prefix="/api/notifications")
     routes.add_url_rule("", view_func=notification_controller.get_notifications, methods=["GET"])
+    routes.add_url_rule("/stream", view_func=notification_controller.stream_notifications, methods=["GET"])
     routes.add_url_rule("/<notification_id>/read", view_func=notification_controller.mark_as_read, methods=["PATCH"])
     routes.add_url_rule("/<notification_id>", view_func=notification_controller.delete_notification, methods=["DELETE"])
     routes.add_url_rule("/all", view_func=notification_controller.delete_all_notifications, methods=["DELETE"])

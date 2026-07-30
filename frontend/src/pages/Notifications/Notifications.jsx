@@ -1,76 +1,15 @@
-import React, { useEffect, useState } from 'react';
-import api from '../../services/api';
-import { useAuth } from '../../context/AuthContext';
-import { Bell, CheckCircle2, Clock } from 'lucide-react';
-import { motion } from 'framer-motion';
+import React from 'react';
+import { useNotification } from '../../context/NotificationContext';
+import { Bell, CheckCircle2, Clock, Trash2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const Notifications = () => {
-  const { token } = useAuth();
-  const [notifications, setNotifications] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, deleteAll } = useNotification();
 
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        const res = await api.get('/notifications', { token });
-        const items = res.data || res || [];
-        setNotifications(Array.isArray(items) ? items : []);
-      } catch (error) {
-        console.error('Failed to load notifications:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchNotifications();
-  }, [token]);
-
-  const markAsRead = async (id) => {
-    try {
-      await api(`/notifications/${id}/read`, { method: 'PATCH', token });
-      setNotifications(prev => 
-        prev.map(n => n.id === id ? { ...n, is_read: true } : n)
-      );
-    } catch (error) {
-      console.error('Failed to mark as read:', error);
-    }
-  };
-
-  const markAllAsRead = async () => {
-    try {
-      await api('/notifications/read-all', { method: 'PATCH', token });
-      setNotifications(prev => 
-        prev.map(n => ({ ...n, is_read: true }))
-      );
-    } catch (error) {
-      console.error('Failed to mark all as read:', error);
-    }
-  };
-
-  const deleteNotification = async (id, e) => {
+  const handleDelete = (e, id) => {
     e.stopPropagation();
-    try {
-      await api.delete(`/notifications/${id}`, { token });
-      setNotifications(prev => prev.filter(n => n.id !== id));
-    } catch (error) {
-      console.error('Failed to delete notification:', error);
-    }
+    deleteNotification(id);
   };
-
-  const clearAllNotifications = async () => {
-    try {
-      await api.delete('/notifications/all', { token });
-      setNotifications([]);
-    } catch (error) {
-      console.error('Failed to clear notifications:', error);
-    }
-  };
-
-  if (loading) {
-    return <div className="p-8 text-center text-gray-500">Загрузка уведомлений...</div>;
-  }
-
-  const unreadCount = notifications.filter(n => !n.is_read).length;
 
   return (
     <div className="max-w-3xl mx-auto p-4 sm:p-6">
@@ -90,7 +29,7 @@ const Notifications = () => {
           )}
           {notifications.length > 0 && (
             <button 
-              onClick={clearAllNotifications}
+              onClick={deleteAll}
               className="text-sm text-red-500 hover:underline font-medium"
             >
               Очистить историю
@@ -106,49 +45,52 @@ const Notifications = () => {
         </div>
       ) : (
         <div className="space-y-3">
-          {notifications.map((notification, index) => (
-            <motion.div 
-              key={notification.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              onClick={() => !notification.is_read && markAsRead(notification.id)}
-              className={`flex items-start gap-4 p-4 rounded-xl border transition-colors cursor-pointer group ${
-                notification.is_read 
-                  ? 'bg-white border-gray-100' 
-                  : 'bg-blue-50/50 border-blue-100 shadow-sm'
-              }`}
-            >
-              <div className="mt-1">
-                {notification.is_read ? (
-                  <CheckCircle2 className="w-5 h-5 text-gray-400" />
-                ) : (
-                  <span className="w-5 h-5 flex items-center justify-center rounded-full bg-blue-100 text-blue-600">
-                    <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
-                  </span>
-                )}
-              </div>
-              <div className="flex-1">
-                <h4 className={`text-sm sm:text-base font-medium ${notification.is_read ? 'text-gray-700' : 'text-gray-900'}`}>
-                  {notification.title}
-                </h4>
-                <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
-                <div className="flex items-center gap-1 mt-2 text-xs text-gray-400">
-                  <Clock className="w-3 h-3" />
-                  {new Date(notification.created_at).toLocaleString('ru-RU', {
-                    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
-                  })}
-                </div>
-              </div>
-              <button 
-                onClick={(e) => deleteNotification(notification.id, e)}
-                className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                title="Удалить уведомление"
+          <AnimatePresence>
+            {notifications.map((notification) => (
+              <motion.div 
+                key={notification.id}
+                layout
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                onClick={() => !notification.is_read && markAsRead(notification.id)}
+                className={`flex items-start gap-4 p-4 rounded-xl border transition-colors cursor-pointer group ${
+                  notification.is_read 
+                    ? 'bg-white border-gray-100' 
+                    : 'bg-blue-50/50 border-blue-100 shadow-sm'
+                }`}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
-              </button>
-            </motion.div>
-          ))}
+                <div className="mt-1">
+                  {notification.is_read ? (
+                    <CheckCircle2 className="w-5 h-5 text-gray-400" />
+                  ) : (
+                    <span className="w-5 h-5 flex items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                      <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className={`text-sm sm:text-base font-medium truncate ${notification.is_read ? 'text-gray-700' : 'text-gray-900'}`}>
+                    {notification.title || 'Уведомление'}
+                  </h4>
+                  <p className="text-sm text-gray-600 mt-1 line-clamp-3">{notification.message}</p>
+                  <div className="flex items-center gap-1 mt-2 text-xs text-gray-400">
+                    <Clock className="w-3 h-3" />
+                    {notification.created_at ? new Date(notification.created_at).toLocaleString('ru-RU', {
+                      day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+                    }) : 'Только что'}
+                  </div>
+                </div>
+                <button 
+                  onClick={(e) => handleDelete(e, notification.id)}
+                  className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                  title="Удалить уведомление"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       )}
     </div>

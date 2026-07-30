@@ -12,8 +12,8 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider>
-        <NotificationProvider>
-          <AuthProvider>
+        <AuthProvider>
+          <NotificationProvider>
             <UserProvider>
               <AIProvider>
                 <div className="min-h-screen bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] font-sans">
@@ -22,8 +22,8 @@ function App() {
                 </div>
               </AIProvider>
             </UserProvider>
-          </AuthProvider>
-        </NotificationProvider>
+          </NotificationProvider>
+        </AuthProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );
