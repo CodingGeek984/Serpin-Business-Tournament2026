@@ -28,9 +28,10 @@ const GamificationBuilder = () => {
   const handleSave = () => {
     setIsSaving(true);
     setTimeout(() => {
+      localStorage.setItem('activeLoyaltyProgram', JSON.stringify(config));
       setIsSaving(false);
-      addNotification('Программа лояльности успешно сохранена', 'success');
-    }, 1000);
+      addNotification('Программа лояльности успешно сохранена и опубликована!', 'success');
+    }, 400);
   };
 
   const SelectedIcon = iconOptions.find(i => i.id === config.icon)?.icon || Coffee;

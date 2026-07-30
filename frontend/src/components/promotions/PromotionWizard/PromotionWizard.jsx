@@ -19,6 +19,7 @@ const PromotionWizard = ({ onComplete, onCancel }) => {
   const { promoTemplates, addPromotion } = useUser();
   const { addNotification } = useNotification();
   const [step, setStep] = useState(1);
+  const [isCreating, setIsCreating] = useState(false);
   const [formData, setFormData] = useState({
     typeId: null,
     title: '',
@@ -36,9 +37,17 @@ const PromotionWizard = ({ onComplete, onCancel }) => {
 
   const handlePrev = () => setStep(s => s - 1);
 
-  const handleCreate = async () => {
-    try {
-      await addPromotion({
+  const handleCreate = () => {
+    setIsCreating(true);
+    setStep(4); // Immediately show success animation
+    
+    setTimeout(() => {
+      onComplete();
+      setIsCreating(false);
+    }, 1200);
+
+    // Run API call in the background without blocking the UI
+    addPromotion({
       title: formData.title,
       type: selectedTemplate.type,
       status: 'active',
@@ -48,12 +57,10 @@ const PromotionWizard = ({ onComplete, onCancel }) => {
       spent: 0,
       endDate: formData.endDate || new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
       qrData: `promo_new_${Date.now()}`
-      });
-      addNotification('Акция создана', 'success');
-      onComplete();
-    } catch (error) {
-      addNotification(error.message, 'error');
-    }
+    }).catch(error => {
+      console.error(error);
+      addNotification("Возникла ошибка при сохранении на сервере", 'error');
+    });
   };
 
   return (
@@ -185,14 +192,6 @@ const PromotionWizard = ({ onComplete, onCancel }) => {
               transition={{ duration: 0.2 }}
               className="flex flex-col items-center py-4"
             >
-              <motion.div 
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", delay: 0.2 }}
-                className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4"
-              >
-                <Check className="w-8 h-8" />
-              </motion.div>
               <h3 className="text-xl font-bold mb-2 text-gray-900">Всё готово к запуску!</h3>
               <p className="text-gray-500 text-sm text-center max-w-md mb-8">
                 Ваша акция <b>"{formData.title}"</b> будет добавлена в систему. QR-код будет сгенерирован автоматически, и клиенты сразу смогут им воспользоваться.
@@ -214,24 +213,49 @@ const PromotionWizard = ({ onComplete, onCancel }) => {
               </div>
             </motion.div>
           )}
+
+          {step === 4 && (
+            <motion.div 
+              key="step4"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: "spring", duration: 0.5 }}
+              className="flex flex-col items-center justify-center py-12"
+            >
+              <motion.div 
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", delay: 0.2 }}
+                className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-6 shadow-sm"
+              >
+                <Check className="w-10 h-10" />
+              </motion.div>
+              <h3 className="text-2xl font-bold mb-2 text-gray-900">Акция запущена!</h3>
+              <p className="text-gray-500 text-sm text-center">
+                Перенаправляем к списку ваших акций...
+              </p>
+            </motion.div>
+          )}
         </AnimatePresence>
 
         {/* Navigation Buttons */}
-        <div className="flex justify-between mt-8 pt-4 border-t border-gray-100">
-          <Button variant="ghost" onClick={step === 1 ? onCancel : handlePrev}>
-            {step === 1 ? 'Отмена' : 'Назад'}
-          </Button>
-          
-          <Button 
-            onClick={step === 3 ? handleCreate : handleNext}
-            disabled={step === 1 && !formData.typeId}
-            className="min-w-[120px]"
-          >
-            {step === 3 ? 'Запустить акцию' : (
-              <span className="flex items-center">Далее <ChevronRight className="w-4 h-4 ml-1" /></span>
-            )}
-          </Button>
-        </div>
+        {step < 4 && (
+          <div className="flex justify-between mt-8 pt-4 border-t border-gray-100">
+            <Button variant="ghost" onClick={step === 1 ? onCancel : handlePrev} disabled={isCreating}>
+              {step === 1 ? 'Отмена' : 'Назад'}
+            </Button>
+            
+            <Button 
+              onClick={step === 3 ? handleCreate : handleNext}
+              disabled={(step === 1 && !formData.typeId) || isCreating}
+              className="min-w-[120px]"
+            >
+              {step === 3 ? (isCreating ? 'Запуск...' : 'Запустить акцию') : (
+                <span className="flex items-center">Далее <ChevronRight className="w-4 h-4 ml-1" /></span>
+              )}
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

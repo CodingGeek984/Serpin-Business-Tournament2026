@@ -27,6 +27,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [dashboardData, setDashboardData] = useState(null);
   const [gamificationData, setGamificationData] = useState(null);
+  const [loyaltyProgram, setLoyaltyProgram] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -39,6 +40,15 @@ const Dashboard = () => {
         setGamificationData(gamRes.data || gamRes);
       }).catch(console.error).finally(() => setIsLoading(false));
     });
+
+    const savedLoyalty = localStorage.getItem('activeLoyaltyProgram');
+    if (savedLoyalty) {
+      try {
+        setLoyaltyProgram(JSON.parse(savedLoyalty));
+      } catch (e) {
+        console.error("Failed to parse loyalty program", e);
+      }
+    }
   }, []);
 
   const activePromotions = dashboardData?.active_promotions || [];
@@ -160,6 +170,32 @@ const Dashboard = () => {
                 <div className="flex justify-between text-xs text-gray-400">
                   <span>{gamificationData.profile.xp} XP</span>
                   <span>{gamificationData.profile.next_level_xp} XP</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Active Loyalty Program Widget */}
+          {loyaltyProgram && (
+            <Card className="hover:shadow-md transition-shadow">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-base text-gray-800">Программа лояльности</CardTitle>
+                <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">Активна</span>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-gray-50 rounded-xl p-4 text-center border border-gray-100">
+                  <h4 className="font-bold text-gray-900 mb-1">{loyaltyProgram.name}</h4>
+                  <p className="text-xs text-gray-500 mb-3">{loyaltyProgram.rewardDescription}</p>
+                  <div className="flex items-center justify-center gap-1">
+                    {Array.from({ length: Math.min(loyaltyProgram.stampCount, 5) }).map((_, i) => (
+                      <div key={i} className="w-8 h-8 rounded-full bg-blue-50 text-[var(--color-brand-blue)] flex items-center justify-center text-xs font-bold border border-blue-100">
+                        ✓
+                      </div>
+                    ))}
+                    {loyaltyProgram.stampCount > 5 && (
+                      <span className="text-xs text-gray-400 font-medium ml-1">+{loyaltyProgram.stampCount - 5}</span>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
