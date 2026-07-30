@@ -6,6 +6,7 @@ const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [business, setBusiness] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -17,8 +18,10 @@ export const AuthProvider = ({ children }) => {
         try {
           const response = await api.get('/auth/me');
           // Extract user from response. If api.js already unwrapped, it's response.user
-          const userData = response.user || response.data?.user || response;
+          const payload = response.data || response;
+          const userData = payload.user || response.user || payload;
           setUser(userData);
+          setBusiness(payload.business || null);
           setIsAuthenticated(true);
         } catch (error) {
           console.error("Failed to authenticate with token", error);
@@ -33,10 +36,11 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const response = await api.post('/auth/login', { email, password });
-      const { access_token, user: userData } = response.data || response;
+      const { access_token, user: userData, business: businessData } = response.data || response;
 
       localStorage.setItem('token', access_token);
       setUser(userData);
+      setBusiness(businessData || null);
       setIsAuthenticated(true);
       return { success: true };
     } catch (error) {
@@ -48,10 +52,11 @@ export const AuthProvider = ({ children }) => {
   const register = async (data) => {
     try {
       const response = await api.post('/auth/register', data);
-      const { access_token, user: userData } = response.data || response;
+      const { access_token, user: userData, business: businessData } = response.data || response;
 
       localStorage.setItem('token', access_token);
       setUser(userData);
+      setBusiness(businessData || null);
       setIsAuthenticated(true);
       return { success: true };
     } catch (error) {
@@ -66,13 +71,14 @@ export const AuthProvider = ({ children }) => {
     } finally {
       localStorage.removeItem('token');
       setUser(null);
+      setBusiness(null);
       setIsAuthenticated(false);
       window.location.href = '/login';
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, isAuthenticated, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, setUser, business, setBusiness, updateBusiness: setBusiness, isAuthenticated, isLoading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

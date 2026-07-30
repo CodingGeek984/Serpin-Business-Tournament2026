@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext';
 import Dashboard from '../pages/Dashboard/Dashboard';
 import Login from '../pages/Login/Login';
 import Tools from '../pages/Tools/Tools';
+import BusinessToolsPage from '../pages/BusinessTools/BusinessToolsPage';
 import Promotions from '../pages/Promotions/Promotions';
 import AIAssistant from '../pages/AIAssistant/AIAssistant';
 import Customers from '../pages/Customers/Customers';
@@ -52,7 +53,8 @@ const AppRoutes = () => {
           {/* Dashboard routes */}
           <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
             <Route path="/dashboard" element={<PageTransition><Dashboard /></PageTransition>} />
-            <Route path="/tools" element={<PageTransition><Tools /></PageTransition>} />
+            <Route path="/tools-catalog" element={<PageTransition><Tools /></PageTransition>} />
+            <Route path="/business-tools" element={<PageTransition><BusinessToolsPage /></PageTransition>} />
             <Route path="/promotions" element={<PageTransition><Promotions /></PageTransition>} />
             <Route path="/ai-assistant" element={<PageTransition><AIAssistant /></PageTransition>} />
             <Route path="/customers" element={<PageTransition><Customers /></PageTransition>} />

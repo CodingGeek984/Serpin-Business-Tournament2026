@@ -28,8 +28,8 @@ const Promotions = () => {
   const [showFilters, setShowFilters] = useState(false);
 
   const filteredPromotions = promotions.filter(p => {
-    if (filter === 'active') return p.status === 'active';
-    if (filter === 'paused') return p.status === 'paused';
+    if (filter === 'active') return p.status === 'active' || p.is_active === true;
+    if (filter === 'paused') return p.status === 'paused' || p.is_active === false;
     return true;
   });
 
@@ -111,7 +111,7 @@ const Promotions = () => {
                 <PromotionCard promotion={promo} />
 
                 {/* Quick action to test QR */}
-                {promo.status === 'active' && (
+                {(promo.status === 'active' || promo.is_active === true) && (
                   <div className="absolute top-4 right-20 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => setQrModalData(promo)}

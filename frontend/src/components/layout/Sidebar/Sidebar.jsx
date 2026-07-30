@@ -9,7 +9,8 @@ const cn = (...args) => twMerge(clsx(args));
 
 const NAV_ITEMS = [
   { path: '/dashboard', label: 'Главная', icon: Home },
-  { path: '/tools', label: 'Инструменты', icon: Wrench },
+  { path: '/tools-catalog', label: 'Каталог решений', icon: Tag },
+  { path: '/business-tools', label: 'Бизнес-инструменты', icon: Wrench },
   { path: '/promotions', label: 'Мои Акции', icon: Tag },
   { path: '/gamification', label: 'Геймификация', icon: Star },
   { path: '/customers', label: 'Клиенты', icon: Users },

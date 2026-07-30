@@ -105,7 +105,15 @@ class ToolController:
             "status": "active"
         })
         
-        return ok(message=f"Инструмент {tool['name']} успешно активирован!")
+        from services.gamification_service import GamificationService
+        from controllers.common import current_user_id
+        rewards = GamificationService.trigger_event(current_user_id(), 'ACTIVATE_TOOL')
+        
+        response = {"message": f"Инструмент {tool['name']} успешно активирован!"}
+        if rewards:
+            response.update(rewards)
+            
+        return ok(response)
 
     @staticmethod
     @jwt_required()
@@ -120,13 +128,15 @@ class ToolController:
         
         recommended = []
         if "кофейня" in b_type or "кафе" in b_type:
-            recommended = [t for t in active if t.get("slug") in ["crm", "promotions"]]
+            recommended = [t for t in active if t.get("slug") in ["6th-coffee-free", "happy-hours"]]
         elif "салон" in b_type or "красот" in b_type or "барбер" in b_type:
-            recommended = [t for t in active if t.get("slug") in ["crm", "analytics"]]
+            recommended = [t for t in active if t.get("slug") in ["welcome-bonus", "whatsapp-return"]]
+        elif "магазин" in b_type or "одежд" in b_type:
+            recommended = [t for t in active if t.get("slug") in ["return-21-days", "basic-analytics"]]
         else:
             recommended = active[:3]
             
-        if len(recommended) < 3:
+        if len(recommended) < 2:
             recommended = active[:3]
             
         result = [ToolController._add_user_flags(t) for t in recommended[:3]]

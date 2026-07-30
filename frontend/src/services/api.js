@@ -27,8 +27,31 @@ api.interceptors.request.use(
 // Добавляем Interceptor для обработки ответов
 api.interceptors.response.use(
   (response) => {
-    // В нашем Flask API формат ответов: { success: true/false, ...data }
-    // Можно сразу возвращать данные из ответа
+    // Process Gamification Rewards globally
+    if (response.data && response.data.gamification_rewards) {
+      import('react-hot-toast').then(({ default: toast }) => {
+        response.data.gamification_rewards.forEach(reward => {
+          if (reward.type === 'ACHIEVEMENT_UNLOCKED') {
+            toast.success(`Достижение: ${reward.title}!\n+${reward.reward_points} баллов\n${reward.description}`, {
+              icon: '🏆',
+              duration: 5000,
+              style: {
+                background: '#4f46e5',
+                color: '#fff',
+                fontWeight: 'bold'
+              }
+            });
+          } else if (reward.type === 'TASK_COMPLETED') {
+            toast.success(`${reward.title} (+${reward.reward_points}XP)`, { duration: 4000 });
+          }
+
+          if (reward.level_up) {
+             toast.success("Поздравляем! Вы достигли НОВОГО УРОВНЯ! 🚀", { duration: 6000 });
+          }
+        });
+      });
+    }
+
     return response.data;
   },
   (error) => {

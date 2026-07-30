@@ -16,6 +16,8 @@ class Business:
         social_links=None,
         working_hours=None,
         goals=None,
+        primary_goals=None,
+        is_onboarding_completed=False,
         created_at=None,
         updated_at=None,
     ):
@@ -32,6 +34,8 @@ class Business:
         self.social_links = social_links if social_links is not None else {}
         self.working_hours = working_hours if working_hours is not None else {}
         self.goals = goals if goals is not None else []
+        self.primary_goals = primary_goals if primary_goals is not None else []
+        self.is_onboarding_completed = is_onboarding_completed
         self.created_at = created_at
         self.updated_at = updated_at
 
@@ -49,6 +53,8 @@ class Business:
             "social_links": self.social_links,
             "working_hours": self.working_hours,
             "goals": self.goals,
+            "primary_goals": self.primary_goals,
+            "is_onboarding_completed": self.is_onboarding_completed,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
         }

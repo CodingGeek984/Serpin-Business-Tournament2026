@@ -10,7 +10,10 @@ import { twMerge } from 'tailwind-merge';
 const PromotionCard = ({ promotion }) => {
   const { updatePromotionStatus } = useUser();
   const { addNotification } = useNotification();
-  const isActive = promotion.status === 'active';
+  const isActive = promotion.status === 'active' || promotion.is_active === true;
+  const views = Number(promotion.views || 0);
+  const conversions = Number(promotion.conversions || promotion.usage_count || 0);
+  const budget = Number(promotion.budget || 0);
 
   const toggleStatus = async () => {
     try {
@@ -38,19 +41,19 @@ const PromotionCard = ({ promotion }) => {
         <div className="grid grid-cols-2 gap-4 mb-6 mt-auto">
           <div className="flex flex-col">
             <span className="text-xs text-gray-500 mb-1 flex items-center"><Eye className="w-3 h-3 mr-1"/> Просмотры</span>
-            <span className="font-semibold">{promotion.views.toLocaleString()}</span>
+            <span className="font-semibold">{views.toLocaleString()}</span>
           </div>
           <div className="flex flex-col">
             <span className="text-xs text-gray-500 mb-1 flex items-center"><MousePointerClick className="w-3 h-3 mr-1"/> Конверсии</span>
-            <span className="font-semibold">{promotion.conversions.toLocaleString()}</span>
+            <span className="font-semibold">{conversions.toLocaleString()}</span>
           </div>
           <div className="flex flex-col">
             <span className="text-xs text-gray-500 mb-1 flex items-center"><Calendar className="w-3 h-3 mr-1"/> До</span>
-            <span className="font-semibold text-sm">{promotion.endDate}</span>
+            <span className="font-semibold text-sm">{promotion.endDate || promotion.end_date || 'Не ограничен'}</span>
           </div>
           <div className="flex flex-col">
             <span className="text-xs text-gray-500 mb-1">Бюджет</span>
-            <span className="font-semibold text-sm">{promotion.budget > 0 ? `${promotion.budget} ₸` : 'Бесплатно'}</span>
+            <span className="font-semibold text-sm">{budget > 0 ? `${budget} ₸` : 'Бесплатно'}</span>
           </div>
         </div>
 

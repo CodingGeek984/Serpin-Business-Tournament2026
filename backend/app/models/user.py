@@ -11,6 +11,8 @@ class User:
         business_type="",
         business_size="",
         goal="",
+        primary_goals=None,
+        is_onboarding_completed=False,
         role="business",
         created_at=None,
     ):
@@ -22,6 +24,8 @@ class User:
         self.business_type = business_type
         self.business_size = business_size
         self.goal = goal
+        self.primary_goals = primary_goals if primary_goals is not None else []
+        self.is_onboarding_completed = is_onboarding_completed
         self.role = role
         self.created_at = created_at
 
@@ -34,6 +38,8 @@ class User:
             "business_type": self.business_type,
             "business_size": self.business_size,
             "goal": self.goal,
+            "primary_goals": self.primary_goals,
+            "is_onboarding_completed": self.is_onboarding_completed,
             "role": self.role,
             "created_at": self.created_at,
         }

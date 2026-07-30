@@ -42,6 +42,8 @@ def create_business_data(user_id, data):
         "social_links": {},
         "working_hours": {},
         "goals": goals,
+        "primary_goals": goals,
+        "is_onboarding_completed": False,
     }
 
 

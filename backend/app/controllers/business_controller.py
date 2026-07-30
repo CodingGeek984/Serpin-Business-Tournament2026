@@ -8,7 +8,7 @@ from store import store
 class BusinessController:
     EDITABLE_FIELDS = {
         "name", "business_type", "business_size", "description", "logo_url",
-        "phone", "address", "website", "social_links", "working_hours", "goals",
+        "phone", "address", "website", "social_links", "working_hours", "goals", "primary_goals",
     }
 
     @staticmethod

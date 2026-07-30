@@ -55,7 +55,7 @@ export const UserProvider = ({ children }) => {
     try {
       const res = await api.post('/promotions', promoData);
       const newPromo = res.data || res;
-      setPromotions([newPromo, ...promotions]);
+      setPromotions((current) => [newPromo, ...current]);
       addNotification("Акция успешно создана!", "success");
       return { success: true, data: newPromo };
     } catch (error) {
@@ -68,7 +68,7 @@ export const UserProvider = ({ children }) => {
   const updatePromotionStatus = async (id, status) => {
     try {
       await api.put(`/promotions/${id}`, { status });
-      setPromotions(promotions.map(p => p.id === id ? { ...p, status } : p));
+      setPromotions((current) => current.map(p => p.id === id ? { ...p, status } : p));
       addNotification(`Статус акции обновлен на ${status}`, "success");
     } catch (error) {
       console.error("Failed to update status", error);

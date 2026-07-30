@@ -10,6 +10,7 @@ from controllers import auth_controller
 from controllers import business_controller
 from controllers import customer_controller
 from controllers import notification_controller
+from controllers import onboarding_controller
 from controllers import promotion_controller
 from controllers import recommendation_controller
 from controllers import tool_controller
@@ -30,6 +31,9 @@ def register_routes(app):
     app.register_blueprint(create_template_routes())
     app.register_blueprint(create_admin_routes())
     app.register_blueprint(create_user_routes())
+    app.register_blueprint(create_gamification_routes())
+    app.register_blueprint(create_business_tools_routes())
+    app.register_blueprint(create_onboarding_routes())
 
 
 def create_auth_routes():
@@ -93,8 +97,14 @@ def create_analytics_routes():
 
 def create_recommendation_routes():
     routes = Blueprint("recommendations", __name__, url_prefix="/api/recommendations")
-    routes.add_url_rule("", view_func=recommendation_controller.get_recommendations, methods=["GET"])
+    routes.add_url_rule("", view_func=recommendation_controller.RecommendationController.get_recommendations, methods=["GET"])
     routes.add_url_rule("/<recommendation_id>/dismiss", view_func=recommendation_controller.dismiss_recommendation, methods=["POST"])
+    return routes
+
+
+def create_onboarding_routes():
+    routes = Blueprint("onboarding", __name__, url_prefix="/api/onboarding")
+    routes.add_url_rule("", view_func=onboarding_controller.OnboardingController.complete, methods=["POST"])
     return routes
 
 
@@ -145,4 +155,21 @@ def create_user_routes():
     routes.add_url_rule("/profile", view_func=UserController.update_profile, methods=["PUT"])
     routes.add_url_rule("/change-password", view_func=UserController.change_password, methods=["PUT"])
     routes.add_url_rule("/account", view_func=UserController.delete_account, methods=["DELETE"])
+    return routes
+
+def create_gamification_routes():
+    from controllers.gamification_controller import GamificationController
+    routes = Blueprint("gamification", __name__, url_prefix="/api/gamification")
+    routes.add_url_rule("/status", view_func=GamificationController.get_status, methods=["GET"])
+    routes.add_url_rule("/claim-daily-reward", view_func=GamificationController.claim_daily_reward, methods=["POST"])
+    routes.add_url_rule("/claim-task-reward", view_func=GamificationController.claim_task_reward, methods=["POST"])
+    return routes
+
+def create_business_tools_routes():
+    from controllers.business_tools_controller import BusinessToolsController
+    routes = Blueprint("business_tools", __name__, url_prefix="/api/business-tools")
+    routes.add_url_rule("/launch", view_func=BusinessToolsController.launch_tool, methods=["POST"])
+    routes.add_url_rule("/active", view_func=BusinessToolsController.get_active_tools, methods=["GET"])
+    routes.add_url_rule("/simulate", view_func=BusinessToolsController.simulate_tool, methods=["POST"])
+    routes.add_url_rule("/metrics/<tool_instance_id>", view_func=BusinessToolsController.get_tool_metrics, methods=["GET"])
     return routes

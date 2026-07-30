@@ -8,6 +8,7 @@ import { motion } from 'framer-motion';
 import { useNotification } from '../../context/NotificationContext';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import RecommendationWidget from '../../components/common/RecommendationWidget';
 
 const iconMap = {
   Mail: Mail,
@@ -84,14 +85,7 @@ const Tools = () => {
     if (tool.active) {
       addNotification(`Открыты настройки для "${tool.name}"`, 'info');
     } else {
-      try {
-        await api(`/tools/${tool.id}/activate`, { method: 'POST', token });
-        setTools(tools.map(t => t.id === tool.id ? { ...t, active: true } : t));
-        setRecommendations(recommendations.map(t => t.id === tool.id ? { ...t, active: true } : t));
-        addNotification(`Инструмент "${tool.name}" успешно подключен!`, 'success');
-      } catch (error) {
-        addNotification(error.message || `Ошибка подключения "${tool.name}"`, 'error');
-      }
+      window.location.href = '/business-tools';
     }
   };
 
@@ -132,6 +126,10 @@ const Tools = () => {
             </button>
           ))}
         </div>
+      </motion.div>
+
+      <motion.div variants={itemVariants}>
+        <RecommendationWidget />
       </motion.div>
 
       {/* Smart Recommendations Section */}

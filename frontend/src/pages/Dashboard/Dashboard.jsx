@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useUser } from '../../context/UserContext';
 import StatCard from '../../components/dashboard/StatCard/StatCard';
 import RevenueChart from '../../components/dashboard/RevenueChart/RevenueChart';
@@ -7,6 +7,7 @@ import Button from '../../components/common/Button/Button';
 import { ArrowRight, Plus } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import RecommendationWidget from '../../components/common/RecommendationWidget';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -25,12 +26,17 @@ const Dashboard = () => {
   const { stats: mockStats } = useUser();
   const navigate = useNavigate();
   const [dashboardData, setDashboardData] = useState(null);
+  const [gamificationData, setGamificationData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     import('../../services/api').then(({ default: api }) => {
-      api.get('/business/dashboard').then(res => {
-        setDashboardData(res.data || res);
+      Promise.all([
+        api.get('/business/dashboard'),
+        api.get('/gamification/status')
+      ]).then(([dashRes, gamRes]) => {
+        setDashboardData(dashRes.data || dashRes);
+        setGamificationData(gamRes.data || gamRes);
       }).catch(console.error).finally(() => setIsLoading(false));
     });
   }, []);
@@ -69,6 +75,10 @@ const Dashboard = () => {
             Создать акцию
           </Button>
         </div>
+      </motion.div>
+
+      <motion.div variants={itemVariants}>
+        <RecommendationWidget />
       </motion.div>
 
       {/* Stats Grid */}
@@ -116,6 +126,63 @@ const Dashboard = () => {
                   Все акции <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </div>
+            </CardContent>
+          </Card>
+          
+          {/* Gamification Widget */}
+          {gamificationData && (
+            <Card className="hover:shadow-md transition-shadow overflow-hidden relative">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-400/20 to-indigo-400/20 blur-2xl -mr-10 -mt-10 rounded-full z-0"></div>
+              <CardHeader className="relative z-10 pb-2">
+                <CardTitle className="flex items-center gap-2">
+                  <span className="text-xl">🏆</span> Уровень Бизнеса
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="relative z-10">
+                <div className="flex justify-between items-end mb-2">
+                  <div>
+                    <span className="text-sm text-gray-500 font-medium">Уровень</span>
+                    <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-600">
+                      {gamificationData.profile.level}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm font-bold text-gray-700">{gamificationData.profile.points} баллов</span>
+                  </div>
+                </div>
+                
+                <div className="w-full bg-gray-100 rounded-full h-2.5 mt-4 mb-1">
+                  <div 
+                    className="bg-gradient-to-r from-purple-500 to-indigo-500 h-2.5 rounded-full" 
+                    style={{ width: `${Math.min(100, (gamificationData.profile.xp / (typeof gamificationData.profile.next_level_xp === 'number' ? gamificationData.profile.next_level_xp : 1000)) * 100)}%` }}
+                  ></div>
+                </div>
+                <div className="flex justify-between text-xs text-gray-400">
+                  <span>{gamificationData.profile.xp} XP</span>
+                  <span>{gamificationData.profile.next_level_xp} XP</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* AI Recommendations */}
+          <Card className="hover:shadow-md transition-shadow border-[var(--color-brand-blue)] border-opacity-30 bg-blue-50/30">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-blue-900">
+                <span className="text-xl">💡</span> Рекомендации
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-3">
+                <li className="flex gap-2 items-start text-sm">
+                  <span className="text-blue-600 mt-0.5">•</span>
+                  <span className="text-gray-700">Запустите акцию <strong>«Счастливые часы»</strong> — у вас спад визитов с 14:00 до 16:00.</span>
+                </li>
+                <li className="flex gap-2 items-start text-sm">
+                  <span className="text-blue-600 mt-0.5">•</span>
+                  <span className="text-gray-700">Верните клиентов: 12 человек не были у вас больше месяца. <Link to="/business-tools" className="text-blue-600 hover:underline">Отправить SMS</Link></span>
+                </li>
+              </ul>
             </CardContent>
           </Card>
         </div>

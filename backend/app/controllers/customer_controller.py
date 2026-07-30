@@ -77,7 +77,16 @@ def create_customer():
     customer["tags"] = tags
 
     created_customer = store.insert("customers", customer)
-    return ok(created_customer, 201)
+    
+    from services.gamification_service import GamificationService
+    from controllers.common import current_user_id
+    rewards = GamificationService.trigger_event(current_user_id(), 'ADD_CUSTOMER')
+    
+    response = {"success": True, "data": created_customer}
+    if rewards:
+        response.update(rewards)
+        
+    return ok(response, 201)
 
 
 @business_required
