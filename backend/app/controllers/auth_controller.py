@@ -6,6 +6,13 @@ from controllers.common import current_business, current_user_id, error, ok
 from store import store
 
 
+def get_str(data, key, default=""):
+    val = data.get(key, default)
+    if not isinstance(val, str):
+        return default
+    return val.strip()
+
+
 def serialize_user(user):
     """Return user data that may safely be sent to a client."""
     return {
@@ -24,9 +31,9 @@ def create_business_data(user_id, data):
 
     return {
         "user_id": user_id,
-        "name": str(data.get("business_name", "")).strip(),
-        "business_type": str(data.get("business_type", "")).strip(),
-        "business_size": str(data.get("business_size", "")).strip(),
+        "name": get_str(data, "business_name"),
+        "business_type": get_str(data, "business_type"),
+        "business_size": get_str(data, "business_size"),
         "description": "",
         "logo_url": "",
         "phone": "",
@@ -40,9 +47,9 @@ def create_business_data(user_id, data):
 
 def register():
     data = request.get_json(silent=True) or {}
-    full_name = str(data.get("full_name", "")).strip()
-    email = str(data.get("email", "")).strip().lower()
-    password = str(data.get("password", ""))
+    full_name = get_str(data, "full_name")
+    email = get_str(data, "email").lower()
+    password = get_str(data, "password")
 
     if not full_name or not email or not password:
         return error("full_name, email and password are required")
@@ -73,8 +80,8 @@ def register():
 
 def login():
     data = request.get_json(silent=True) or {}
-    email = str(data.get("email", "")).strip().lower()
-    password = str(data.get("password", ""))
+    email = get_str(data, "email").lower()
+    password = get_str(data, "password")
     user = store.first("users", email=email)
 
     if user is None:

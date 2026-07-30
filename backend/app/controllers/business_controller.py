@@ -59,8 +59,15 @@ class BusinessController:
         data = request.get_json(silent=True) or {}
         updates = {}
 
+        string_fields = {
+            "name", "business_type", "business_size", "description", "logo_url",
+            "phone", "address", "website"
+        }
+
         for field, value in data.items():
             if field in BusinessController.EDITABLE_FIELDS:
+                if field in string_fields and not isinstance(value, str):
+                    return error(f"{field} must be a string")
                 updates[field] = value
 
         for field in ("social_links", "working_hours"):

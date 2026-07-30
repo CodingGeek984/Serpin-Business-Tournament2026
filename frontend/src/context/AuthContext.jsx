@@ -16,7 +16,9 @@ export const AuthProvider = ({ children }) => {
       if (token) {
         try {
           const response = await api.get('/auth/me');
-          setUser(response.data || response); // depends on backend format
+          // Extract user from response. If api.js already unwrapped, it's response.user
+          const userData = response.user || response.data?.user || response;
+          setUser(userData);
           setIsAuthenticated(true);
         } catch (error) {
           console.error("Failed to authenticate with token", error);

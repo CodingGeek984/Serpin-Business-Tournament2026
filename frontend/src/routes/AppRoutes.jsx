@@ -1,5 +1,7 @@
 import React, { Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
+import PageTransition from '../components/PageTransition';
 import DashboardLayout from '../layouts/DashboardLayout';
 import AuthLayout from '../layouts/AuthLayout';
 import { useAuth } from '../context/AuthContext';
@@ -37,33 +39,36 @@ const AdminRoute = ({ children }) => {
 };
 
 const AppRoutes = () => {
+  const location = useLocation();
   return (
     <Suspense fallback={<div className="flex h-screen items-center justify-center">Loading...</div>}>
-      <Routes>
-        {/* Auth routes */}
-        <Route element={<AuthLayout />}>
-          <Route path="/login" element={<Login />} />
-        </Route>
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
+          {/* Auth routes */}
+          <Route element={<AuthLayout />}>
+            <Route path="/login" element={<Login />} />
+          </Route>
 
-        {/* Dashboard routes */}
-        <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/tools" element={<Tools />} />
-          <Route path="/promotions" element={<Promotions />} />
-          <Route path="/ai-assistant" element={<AIAssistant />} />
-          <Route path="/customers" element={<Customers />} />
-          <Route path="/customers/:id" element={<CustomerProfile />} />
-          <Route path="/gamification" element={<GamificationBuilder />} />
-          <Route path="/analytics" element={<Analytics />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
-          <Route path="/notifications" element={<Notifications />} />
-          <Route path="/favorites" element={<Favorites />} />
-        </Route>
+          {/* Dashboard routes */}
+          <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+            <Route path="/dashboard" element={<PageTransition><Dashboard /></PageTransition>} />
+            <Route path="/tools" element={<PageTransition><Tools /></PageTransition>} />
+            <Route path="/promotions" element={<PageTransition><Promotions /></PageTransition>} />
+            <Route path="/ai-assistant" element={<PageTransition><AIAssistant /></PageTransition>} />
+            <Route path="/customers" element={<PageTransition><Customers /></PageTransition>} />
+            <Route path="/customers/:id" element={<PageTransition><CustomerProfile /></PageTransition>} />
+            <Route path="/gamification" element={<PageTransition><GamificationBuilder /></PageTransition>} />
+            <Route path="/analytics" element={<PageTransition><Analytics /></PageTransition>} />
+            <Route path="/settings" element={<PageTransition><Settings /></PageTransition>} />
+            <Route path="/admin" element={<AdminRoute><PageTransition><Admin /></PageTransition></AdminRoute>} />
+            <Route path="/notifications" element={<PageTransition><Notifications /></PageTransition>} />
+            <Route path="/favorites" element={<PageTransition><Favorites /></PageTransition>} />
+          </Route>
 
-        <Route path="/" element={<Landing />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </AnimatePresence>
     </Suspense>
   );
 };

@@ -10,7 +10,7 @@ from routes import register_routes
 def create_app(config_object=Config):
     app = Flask(__name__)
     app.config.from_object(config_object)
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    CORS(app, resources={r"/api/*": {"origins": app.config.get("CORS_ORIGINS", "*")}})
     jwt = JWTManager(app)
     app.config["JWT_BLOCKLIST"] = set()
 
@@ -55,4 +55,4 @@ def create_app(config_object=Config):
 app = create_app()
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
