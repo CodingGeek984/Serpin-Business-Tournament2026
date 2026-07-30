@@ -109,7 +109,7 @@ class FirestoreStore:
 class JsonStore:
     collections = ("users", "businesses", "tools", "favorites", "promotions",
                    "customers", "analytics", "recommendations", "notifications",
-                   "ai_chats", "ai_messages")
+                   "ai_chats", "ai_messages", "active_tools", "promotion_templates")
 
     def __init__(self):
         self.path = os.environ.get("SERPIN_DATA_FILE", os.path.join(os.path.dirname(__file__), "data.json"))

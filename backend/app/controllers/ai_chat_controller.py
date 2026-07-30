@@ -78,17 +78,40 @@ def send_message(chat_id):
         "ai_messages",
         {"chat_id": chat_id, "sender": "user", "text": text},
     )
+
+    import os
+    try:
+        import google.generativeai as genai
+    except ImportError:
+        genai = None
+
+    api_key = os.environ.get("GEMINI_API_KEY")
+    reply_text = ""
+
+    if api_key and genai:
+        try:
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel("gemini-1.5-flash")
+            # We can optionally pass previous context if we wanted, but let's keep it simple for now
+            response = model.generate_content(text)
+            reply_text = response.text
+        except Exception as e:
+            reply_text = f"Ошибка генерации ответа AI: {str(e)}"
+    else:
+        reply_text = (
+            "Принял запрос. Установите google-generativeai и переменную "
+            "окружения GEMINI_API_KEY, чтобы получать генеративные ответы."
+        )
+
     reply = store.insert(
         "ai_messages",
         {
             "chat_id": chat_id,
             "sender": "assistant",
-            "text": (
-                "Принял запрос. Подключите AI-провайдер в production, "
-                "чтобы получать генеративные ответы."
-            ),
+            "text": reply_text,
         },
     )
     store.update("ai_chats", chat_id, {})
 
     return ok({"message": user_message, "reply": reply}, 201)
+
