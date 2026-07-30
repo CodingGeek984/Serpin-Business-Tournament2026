@@ -18,8 +18,8 @@ const Admin = () => {
         api('/admin/summary', { token }),
         api('/admin/templates', { token }),
       ]);
-      setSummary(nextSummary);
-      setTemplates(nextTemplates);
+      setSummary(nextSummary.data || nextSummary);
+      setTemplates(nextTemplates.data || nextTemplates);
     } catch (requestError) {
       setError(requestError.message);
     }

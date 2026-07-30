@@ -22,9 +22,31 @@ const itemVariants = {
 };
 
 const Dashboard = () => {
-  const { stats, promotions } = useUser();
+  const { stats: mockStats } = useUser();
   const navigate = useNavigate();
-  const activePromotions = promotions.filter(p => p.status === 'active');
+  const [dashboardData, setDashboardData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    import('../../services/api').then(({ default: api }) => {
+      api.get('/business/dashboard').then(res => {
+        setDashboardData(res.data || res);
+      }).catch(console.error).finally(() => setIsLoading(false));
+    });
+  }, []);
+
+  const activePromotions = dashboardData?.active_promotions || [];
+
+  if (isLoading) {
+    return <div className="flex justify-center p-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-brand-blue)]"></div></div>;
+  }
+
+  const dynamicStats = [
+    { label: 'Выручка (мес)', value: `₸${(dashboardData?.monthly_revenue || 0).toLocaleString()}`, change: '+12%', trend: 'up' },
+    { label: 'Визиты', value: dashboardData?.monthly_visits || 0, change: '+5%', trend: 'up' },
+    { label: 'Клиенты', value: dashboardData?.total_customers || 0, change: '+18%', trend: 'up' },
+    { label: 'Активные акции', value: dashboardData?.active_promotions_count || 0, change: '0%', trend: 'neutral' }
+  ];
 
   return (
     <motion.div 
@@ -38,15 +60,20 @@ const Dashboard = () => {
           <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Обзор бизнеса</h1>
           <p className="text-sm text-gray-500 mt-1">Вот что происходит с вашим бизнесом сегодня</p>
         </div>
-        <Button className="gap-2 shadow-sm hover:shadow-md" onClick={() => navigate('/promotions')}>
-          <Plus className="w-4 h-4" />
-          Создать акцию
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => navigate('/settings')}>
+            Настройки бизнеса
+          </Button>
+          <Button className="gap-2 shadow-sm hover:shadow-md" onClick={() => navigate('/promotions')}>
+            <Plus className="w-4 h-4" />
+            Создать акцию
+          </Button>
+        </div>
       </motion.div>
 
       {/* Stats Grid */}
       <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, idx) => (
+        {dynamicStats.map((stat, idx) => (
           <StatCard key={idx} {...stat} />
         ))}
       </motion.div>
@@ -68,12 +95,12 @@ const Dashboard = () => {
             <CardContent className="p-0">
               <div className="divide-y divide-gray-100">
                 {activePromotions.slice(0, 3).map(promo => (
-                  <div key={promo.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                  <div key={promo.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => navigate('/promotions')}>
                     <div>
                       <p className="font-medium text-sm text-[var(--color-text-primary)] line-clamp-1">{promo.title}</p>
-                      <p className="text-xs text-gray-500 mt-1">{promo.conversions} активаций</p>
+                      <p className="text-xs text-gray-500 mt-1">{promo.conversions || 0} активаций</p>
                     </div>
-                    <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full animate-pulse">
+                    <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
                       Активна
                     </span>
                   </div>

@@ -12,8 +12,9 @@ const Notifications = () => {
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
-        const data = await api('/notifications', { token });
-        setNotifications(data || []);
+        const res = await api.get('/notifications', { token });
+        const items = res.data || res || [];
+        setNotifications(Array.isArray(items) ? items : []);
       } catch (error) {
         console.error('Failed to load notifications:', error);
       } finally {
@@ -46,6 +47,25 @@ const Notifications = () => {
     }
   };
 
+  const deleteNotification = async (id, e) => {
+    e.stopPropagation();
+    try {
+      await api.delete(`/notifications/${id}`, { token });
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    } catch (error) {
+      console.error('Failed to delete notification:', error);
+    }
+  };
+
+  const clearAllNotifications = async () => {
+    try {
+      await api.delete('/notifications/all', { token });
+      setNotifications([]);
+    } catch (error) {
+      console.error('Failed to clear notifications:', error);
+    }
+  };
+
   if (loading) {
     return <div className="p-8 text-center text-gray-500">Загрузка уведомлений...</div>;
   }
@@ -57,22 +77,32 @@ const Notifications = () => {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Уведомления</h1>
-          <p className="text-sm text-gray-500 mt-1">Входящие события и оповещения</p>
+          <p className="text-sm text-gray-500 mt-1">Входящие события и история оповещений</p>
         </div>
-        {unreadCount > 0 && (
-          <button 
-            onClick={markAllAsRead}
-            className="text-sm text-[var(--color-brand-blue)] hover:underline font-medium"
-          >
-            Прочитать все
-          </button>
-        )}
+        <div className="flex gap-4">
+          {unreadCount > 0 && (
+            <button 
+              onClick={markAllAsRead}
+              className="text-sm text-[var(--color-brand-blue)] hover:underline font-medium"
+            >
+              Прочитать все
+            </button>
+          )}
+          {notifications.length > 0 && (
+            <button 
+              onClick={clearAllNotifications}
+              className="text-sm text-red-500 hover:underline font-medium"
+            >
+              Очистить историю
+            </button>
+          )}
+        </div>
       </div>
 
       {notifications.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-100">
           <Bell className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500">У вас нет новых уведомлений</p>
+          <p className="text-gray-500">У вас нет уведомлений</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -83,7 +113,7 @@ const Notifications = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
               onClick={() => !notification.is_read && markAsRead(notification.id)}
-              className={`flex items-start gap-4 p-4 rounded-xl border transition-colors cursor-pointer ${
+              className={`flex items-start gap-4 p-4 rounded-xl border transition-colors cursor-pointer group ${
                 notification.is_read 
                   ? 'bg-white border-gray-100' 
                   : 'bg-blue-50/50 border-blue-100 shadow-sm'
@@ -110,6 +140,13 @@ const Notifications = () => {
                   })}
                 </div>
               </div>
+              <button 
+                onClick={(e) => deleteNotification(notification.id, e)}
+                className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                title="Удалить уведомление"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+              </button>
             </motion.div>
           ))}
         </div>

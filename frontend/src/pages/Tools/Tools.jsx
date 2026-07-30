@@ -33,14 +33,32 @@ const Tools = () => {
   const { addNotification } = useNotification();
   const { token } = useAuth();
   const [tools, setTools] = useState([]);
+  const [recommendations, setRecommendations] = useState([]);
   const [favorites, setFavorites] = useState(new Set());
   const [filter, setFilter] = useState('all'); // all, active, inactive
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadData = async () => {
+    try {
+      const [toolsRes, recRes] = await Promise.all([
+        api('/tools', { token }),
+        api('/tools/recommendations', { token }).catch(() => ({ data: [] }))
+      ]);
+      const items = toolsRes.data || toolsRes;
+      setTools(items.map((item) => ({ ...item, active: item.is_activated })));
+      setFavorites(new Set(items.filter((item) => item.is_favorite).map((item) => item.id)));
+      
+      const recs = recRes.data || recRes || [];
+      setRecommendations(recs.map((item) => ({ ...item, active: item.is_activated })));
+    } catch (error) {
+      addNotification(error.message, 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    api('/tools', { token }).then((items) => {
-      setTools(items.map((item) => ({ ...item, active: item.is_active })));
-      setFavorites(new Set(items.filter((item) => item.is_favorite).map((item) => item.id)));
-    }).catch((error) => addNotification(error.message, 'error'));
+    loadData();
   }, [token, addNotification]);
 
   const toggleFavorite = async (id, name) => {
@@ -62,11 +80,18 @@ const Tools = () => {
     }
   };
 
-  const handleAction = (tool) => {
+  const handleAction = async (tool) => {
     if (tool.active) {
       addNotification(`Открыты настройки для "${tool.name}"`, 'info');
     } else {
-      addNotification(`Запрос на подключение "${tool.name}" отправлен`, 'success');
+      try {
+        await api(`/tools/${tool.id}/activate`, { method: 'POST', token });
+        setTools(tools.map(t => t.id === tool.id ? { ...t, active: true } : t));
+        setRecommendations(recommendations.map(t => t.id === tool.id ? { ...t, active: true } : t));
+        addNotification(`Инструмент "${tool.name}" успешно подключен!`, 'success');
+      } catch (error) {
+        addNotification(error.message || `Ошибка подключения "${tool.name}"`, 'error');
+      }
     }
   };
 
@@ -108,6 +133,42 @@ const Tools = () => {
           ))}
         </div>
       </motion.div>
+
+      {/* Smart Recommendations Section */}
+      {recommendations.length > 0 && filter === 'all' && (
+        <motion.div variants={itemVariants} className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100 shadow-sm mt-2 mb-4">
+          <div className="flex items-center gap-2 mb-4">
+            <Brain className="w-5 h-5 text-[var(--color-brand-blue)]" />
+            <h2 className="text-lg font-bold text-gray-900">Рекомендовано для вашего бизнеса</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {recommendations.map(tool => {
+              const Icon = iconMap[tool.icon] || ChevronRight;
+              return (
+                <Card key={`rec-${tool.id}`} className="hover:shadow-md transition-all duration-300 border-white bg-white/80 backdrop-blur-sm">
+                  <CardContent className="p-4 flex flex-col h-full">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-lg bg-blue-100 text-[var(--color-brand-blue)] flex items-center justify-center">
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900 leading-tight">{tool.name}</h3>
+                        {tool.active && <span className="text-[10px] uppercase font-bold text-emerald-600 bg-emerald-100 px-1.5 rounded-sm">Активно</span>}
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-600 line-clamp-2 mb-4">{tool.description}</p>
+                    <div className="mt-auto">
+                      <Button variant={tool.active ? "outline" : "primary"} className="w-full text-sm py-1.5 h-auto" onClick={() => handleAction(tool)}>
+                        {tool.active ? 'Настроить' : 'Подключить'}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </motion.div>
+      )}
 
       <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {filteredTools.map(tool => {

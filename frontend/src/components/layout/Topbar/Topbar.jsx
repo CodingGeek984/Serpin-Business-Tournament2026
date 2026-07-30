@@ -41,14 +41,14 @@ const Topbar = () => {
             </span>
           )}
         </Link>
-        <div className="ml-2 flex items-center gap-2 cursor-pointer p-1 pr-3 rounded-full hover:bg-[var(--color-bg-primary)] transition-colors">
+        <Link to="/settings" className="ml-2 flex items-center gap-2 cursor-pointer p-1 pr-3 rounded-full hover:bg-[var(--color-bg-primary)] transition-colors">
           <img 
             src={user?.avatar || 'https://i.pravatar.cc/150'} 
             alt="Profile" 
             className="h-8 w-8 rounded-full border border-gray-200"
           />
-          <span className="text-sm font-medium hidden lg:block">{user?.name}</span>
-        </div>
+          <span className="text-sm font-medium hidden lg:block">{user?.name || user?.full_name || 'Профиль'}</span>
+        </Link>
       </div>
     </header>
   );
