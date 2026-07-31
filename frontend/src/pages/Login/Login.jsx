@@ -97,9 +97,9 @@ const Login = () => {
         </div>
 
         <div className="text-sm">
-          <a href="#" className="font-medium text-[var(--color-brand-blue)] hover:text-[var(--color-brand-blue-hover)]">
+          <button type="button" onClick={() => alert('Функция восстановления пароля находится в разработке')} className="font-medium text-[var(--color-brand-blue)] hover:text-[var(--color-brand-blue-hover)]">
             Забыли пароль?
-          </a>
+          </button>
         </div>
       </div>
 

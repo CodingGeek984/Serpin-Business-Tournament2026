@@ -27,8 +27,9 @@ const AIAssistant = () => {
   useEffect(() => {
     const fetchRecommendations = async () => {
       try {
-        const data = await api('/recommendations', { token });
-        setRecommendations(data || []);
+        const response = await api.get('/recommendations', { headers: { Authorization: `Bearer ${token}` } });
+        const payload = response.data?.data || response.data || response;
+        setRecommendations(Array.isArray(payload) ? payload : []);
       } catch (error) {
         console.error('Failed to load recommendations:', error);
       } finally {
@@ -72,7 +73,7 @@ const AIAssistant = () => {
               </CardContent>
             </Card>
           ) : (
-            recommendations.map((rec) => (
+            (Array.isArray(recommendations) ? recommendations : []).map((rec) => (
               <Card key={rec.id} className="bg-blue-50 border-blue-100 hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
                   <h4 className="font-semibold text-[var(--color-brand-blue)] text-sm mb-2 flex items-center">

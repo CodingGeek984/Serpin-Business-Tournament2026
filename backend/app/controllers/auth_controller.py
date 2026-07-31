@@ -70,10 +70,13 @@ def register():
         },
     )
     business = store.insert("businesses", create_business_data(user["id"], data))
-    token = create_access_token(identity=user["id"])
+    
+    # ✅ ИСПРАВЛЕНИЕ: identity обязательно должен быть строкой в JWT
+    token = create_access_token(identity=str(user["id"]))
 
     response_data = {
         "access_token": token,
+        "token": token,  # Для совместимости с разными структурами фронтенда
         "user": serialize_user(user),
         "business": business,
     }
@@ -91,8 +94,12 @@ def login():
     if not check_password_hash(user["password_hash"], password):
         return error("Invalid email or password", 401)
 
+    # ✅ ИСПРАВЛЕНИЕ: identity обязательно должен быть строкой в JWT
+    token = create_access_token(identity=str(user["id"]))
+
     response_data = {
-        "access_token": create_access_token(identity=user["id"]),
+        "access_token": token,
+        "token": token,
         "user": serialize_user(user),
         "business": store.first("businesses", user_id=user["id"]),
     }

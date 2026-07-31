@@ -10,10 +10,17 @@ const Analytics = () => {
   const { revenueData, promotions } = useUser();
   const navigate = useNavigate();
 
-  // Calculate funnel from active promotions
-  const totalViews = promotions.reduce((acc, p) => acc + p.views, 0) || 1000;
-  const totalConversions = promotions.reduce((acc, p) => acc + p.conversions, 0) || 100;
-  
+  // ✅ Защита: гарантируем, что работаем с массивами, даже если в контексте null/undefined
+  const safePromotions = Array.isArray(promotions) ? promotions : [];
+  const safeRevenueData = Array.isArray(revenueData) ? revenueData : [];
+
+  // ✅ Безопасный расчёт показателей воронки с защитой от отсутствующих полей
+  const calculatedViews = safePromotions.reduce((acc, p) => acc + Number(p?.views || 0), 0);
+  const calculatedConversions = safePromotions.reduce((acc, p) => acc + Number(p?.conversions || 0), 0);
+
+  const totalViews = calculatedViews > 0 ? calculatedViews : 1000;
+  const totalConversions = calculatedConversions > 0 ? calculatedConversions : 100;
+
   const funnelData = [
     { name: 'Увидели акцию', value: totalViews },
     { name: 'Открыли детали', value: Math.round(totalViews * 0.4) },
@@ -65,20 +72,20 @@ const Analytics = () => {
           </CardHeader>
           <CardContent className="h-80 pt-4">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <AreaChart data={safeRevenueData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorBase" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#9ca3af" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#9ca3af" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#9ca3af" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#9ca3af" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="colorPromo" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--color-brand-blue)" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="var(--color-brand-blue)" stopOpacity={0.1}/>
+                    <stop offset="5%" stopColor="var(--color-brand-blue)" stopOpacity={0.8} />
+                    <stop offset="95%" stopColor="var(--color-brand-blue)" stopOpacity={0.1} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#6b7280', fontSize: 12}} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#6b7280', fontSize: 12}} tickFormatter={v => `${v/1000}k`} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} tickFormatter={v => `${v / 1000}k`} />
                 <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} />
                 <Legend iconType="circle" />
                 <Area type="monotone" dataKey="value" name="Базовая выручка" stroke="#9ca3af" fill="url(#colorBase)" stackId="1" />
@@ -95,11 +102,11 @@ const Analytics = () => {
           </CardHeader>
           <CardContent className="h-80 pt-4">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={revenueData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <BarChart data={safeRevenueData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#6b7280', fontSize: 12}} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#6b7280', fontSize: 12}} />
-                <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} cursor={{fill: '#f9fafb'}} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} />
+                <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} cursor={{ fill: '#f9fafb' }} />
                 <Legend iconType="circle" />
                 <Bar dataKey="returnClients" name="Повторные" fill="#10b981" radius={[0, 0, 4, 4]} stackId="a" />
                 <Bar dataKey="newClients" name="Новые" fill="var(--color-brand-blue)" radius={[4, 4, 0, 0]} stackId="a" />
@@ -117,10 +124,10 @@ const Analytics = () => {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={funnelData} margin={{ top: 10, right: 30, left: 20, bottom: 0 }} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f3f4f6" />
-                <XAxis type="number" axisLine={false} tickLine={false} tick={{fill: '#6b7280'}} />
-                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{fill: '#4b5563', fontSize: 13, fontWeight: 500}} width={150} />
+                <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#6b7280' }} />
+                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fill: '#4b5563', fontSize: 13, fontWeight: 500 }} width={150} />
                 <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} />
-                <Line type="stepAfter" dataKey="value" name="Людей" stroke="var(--color-brand-blue)" strokeWidth={4} dot={{r: 6, fill: 'var(--color-brand-blue)', strokeWidth: 2, stroke: 'white'}} activeDot={{r: 8}} />
+                <Line type="stepAfter" dataKey="value" name="Людей" stroke="var(--color-brand-blue)" strokeWidth={4} dot={{ r: 6, fill: 'var(--color-brand-blue)', strokeWidth: 2, stroke: 'white' }} activeDot={{ r: 8 }} />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>

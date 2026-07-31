@@ -57,7 +57,7 @@ const Landing = () => {
           <div className="flex flex-col sm:flex-row gap-4 mt-4">
             <Link to="/login">
               <Button size="lg" className="w-full sm:w-auto gap-2 shadow-xl shadow-blue-500/20 text-base h-12 px-8">
-                Начать использовать платформу <ArrowRight className="w-4 h-4" />
+                Начать бесплатно <ArrowRight className="w-4 h-4" />
               </Button>
             </Link>
           </div>
@@ -96,8 +96,20 @@ const Landing = () => {
         </motion.div>
       </section>
 
+      {/* Social Proof */}
+      <section className="py-12 bg-white border-y border-gray-100">
+        <div className="max-w-4xl mx-auto text-center px-6">
+          <p className="text-gray-500 mb-6 font-medium text-sm tracking-wide uppercase">Нам доверяют лидеры</p>
+          <div className="flex flex-wrap justify-center gap-8 md:gap-16 text-3xl font-black text-gray-800">
+            <div className="flex flex-col items-center"><span>500+</span><p className="text-sm text-gray-400 font-normal mt-1">бизнесов</p></div>
+            <div className="flex flex-col items-center"><span>12k+</span><p className="text-sm text-gray-400 font-normal mt-1">клиентов</p></div>
+            <div className="flex flex-col items-center text-emerald-600"><span>98%</span><p className="text-sm text-gray-400 font-normal mt-1">довольны</p></div>
+          </div>
+        </div>
+      </section>
+
       {/* Value Proposition */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <div className="text-center max-w-2xl mx-auto mb-16">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Почему Serpin?</h2>

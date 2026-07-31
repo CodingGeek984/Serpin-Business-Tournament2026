@@ -26,12 +26,14 @@ export const UserProvider = ({ children }) => {
       if (businessRes?.data) setUserProfile(businessRes.data);
 
       // 2. Fetch Promotions
-      const promosRes = await api.get('/promotions').catch(() => ({ data: [] }));
-      setPromotions(Array.isArray(promosRes?.data) ? promosRes.data : promosRes || []);
+      const promosRes = await api.get('/promotions').catch(() => null);
+      const promosPayload = promosRes?.data?.data || promosRes?.data || promosRes;
+      setPromotions(Array.isArray(promosPayload) ? promosPayload : []);
 
       // 3. Fetch Customers
-      const customersRes = await api.get('/customers').catch(() => ({ data: [] }));
-      setCustomers(Array.isArray(customersRes?.data) ? customersRes.data : customersRes || []);
+      const customersRes = await api.get('/customers').catch(() => null);
+      const customersPayload = customersRes?.data?.data || customersRes?.data || customersRes;
+      setCustomers(Array.isArray(customersPayload) ? customersPayload : []);
 
       // 4. Fetch Analytics Summary
       const statsRes = await api.get('/analytics/summary').catch(() => null);

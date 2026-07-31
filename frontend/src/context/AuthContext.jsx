@@ -17,11 +17,13 @@ export const AuthProvider = ({ children }) => {
       if (token) {
         try {
           const response = await api.get('/auth/me');
-          // Extract user from response. If api.js already unwrapped, it's response.user
-          const payload = response.data || response;
-          const userData = payload.user || response.user || payload;
+          // FIX: Backend 'ok()' returns { success: true, data: { user, business } }
+          const payload = response.data?.data || response.data || response;
+          const userData = payload.user || payload;
+          const businessData = payload.business || null;
+          
           setUser(userData);
-          setBusiness(payload.business || null);
+          setBusiness(businessData);
           setIsAuthenticated(true);
         } catch (error) {
           console.error("Failed to authenticate with token", error);
@@ -36,25 +38,37 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const response = await api.post('/auth/login', { email, password });
-      const { access_token, user: userData, business: businessData } = response.data || response;
+      
+      // FIX: extract from response.data.data
+      const payload = response.data?.data || response.data || response;
+      const { access_token, token, user: userData, business: businessData } = payload;
+      
+      const finalToken = access_token || token;
+      if (!finalToken) throw new Error("Неверный формат ответа от сервера (нет токена)");
 
-      localStorage.setItem('token', access_token);
+      localStorage.setItem('token', finalToken);
       setUser(userData);
       setBusiness(businessData || null);
       setIsAuthenticated(true);
       return { success: true };
     } catch (error) {
       console.error("Login failed", error);
-      return { success: false, error: error.message };
+      throw error; // FIX: Throw error so Login.jsx can catch it
     }
   };
 
   const register = async (data) => {
     try {
       const response = await api.post('/auth/register', data);
-      const { access_token, user: userData, business: businessData } = response.data || response;
+      
+      // FIX: extract from response.data.data
+      const payload = response.data?.data || response.data || response;
+      const { access_token, token, user: userData, business: businessData } = payload;
+      
+      const finalToken = access_token || token;
+      if (!finalToken) throw new Error("Неверный формат ответа от сервера (нет токена)");
 
-      localStorage.setItem('token', access_token);
+      localStorage.setItem('token', finalToken);
       setUser(userData);
       setBusiness(businessData || null);
       setIsAuthenticated(true);

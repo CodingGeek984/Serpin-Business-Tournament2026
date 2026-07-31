@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
-import { Home, Wrench, Tag, Users, BarChart2, BrainCircuit, Bell, Star, Settings, Database } from 'lucide-react';
+import { Home, Wrench, Tag, Users, BarChart2, BrainCircuit, Bell, Star, Settings, Database, LayoutGrid, Trophy, Heart } from 'lucide-react';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -9,15 +9,15 @@ const cn = (...args) => twMerge(clsx(args));
 
 const NAV_ITEMS = [
   { path: '/dashboard', label: 'Главная', icon: Home },
-  { path: '/tools-catalog', label: 'Каталог решений', icon: Tag },
+  { path: '/tools-catalog', label: 'Каталог решений', icon: LayoutGrid },
   { path: '/business-tools', label: 'Бизнес-инструменты', icon: Wrench },
   { path: '/promotions', label: 'Мои Акции', icon: Tag },
-  { path: '/gamification', label: 'Геймификация', icon: Star },
+  { path: '/gamification', label: 'Геймификация', icon: Trophy },
   { path: '/customers', label: 'Клиенты', icon: Users },
   { path: '/analytics', label: 'Аналитика', icon: BarChart2 },
   { path: '/ai-assistant', label: 'AI Ассистент', icon: BrainCircuit },
   { path: '/notifications', label: 'Уведомления', icon: Bell },
-  { path: '/favorites', label: 'Избранное', icon: Star },
+  { path: '/favorites', label: 'Избранное', icon: Heart },
   { path: '/settings', label: 'Настройки', icon: Settings },
   { path: '/admin', label: 'Админ-панель', icon: Database },
 ];

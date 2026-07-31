@@ -1,7 +1,3 @@
-import os
-from dotenv import load_dotenv
-load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
-
 from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
@@ -14,7 +10,27 @@ from routes import register_routes
 def create_app(config_object=Config):
     app = Flask(__name__)
     app.config.from_object(config_object)
-    CORS(app, resources={r"/api/*": {"origins": app.config.get("CORS_ORIGINS", "*")}})
+
+    # ✅ ИСПРАВЛЕНИЕ CORS:
+    # 1. Задаем явные origin-адреса локального фронтенда (Vite / React)
+    #    без этого браузер блокирует запросы при supports_credentials=True
+    default_origins = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+    origins = app.config.get("CORS_ORIGINS", default_origins)
+
+    # 2. Маска r"/api/*" покрывает все эндпоинты API
+    CORS(
+        app,
+        resources={r"/api/*": {"origins": origins}},
+        supports_credentials=True,
+        allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    )
+
     jwt = JWTManager(app)
     app.config["JWT_BLOCKLIST"] = set()
 
@@ -59,4 +75,5 @@ def create_app(config_object=Config):
 app = create_app()
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
+    # Сервер запущен на порту 5001 (согласовано с api.js)
+    app.run(host="127.0.0.1", port=5001, debug=True, use_reloader=False)

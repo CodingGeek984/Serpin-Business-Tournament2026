@@ -5,6 +5,7 @@ import api from '../../services/api';
 import Button from './Button/Button';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
+import toast from 'react-hot-toast';
 
 const businessTypes = [
   { id: 'coffee_shop', icon: Coffee, title: 'Кофейня', description: 'Кафе, кофейня или пекарня' },
@@ -27,7 +28,6 @@ const sizes = [
 
 const OnboardingModal = ({ isOpen, onClose, onCompleted }) => {
   const { business, updateBusiness } = useAuth();
-  const { addNotification } = useNotification();
   const [step, setStep] = useState(1);
   const [businessType, setBusinessType] = useState('');
   const [primaryGoals, setPrimaryGoals] = useState([]);
@@ -54,14 +54,16 @@ const OnboardingModal = ({ isOpen, onClose, onCompleted }) => {
         primary_goals: primaryGoals,
         business_size: businessSize,
       });
-      const updated = response.data || response;
+      const updated = response.data?.data || response.data || response;
       updateBusiness(updated);
       window.dispatchEvent(new Event('recommendations:refresh'));
-      addNotification('Настройка завершена — ваш план роста готов!', 'success');
+      
+      toast.success('Настройка завершена — ваш план роста готов!');
+      
       onCompleted?.();
       onClose();
     } catch (err) {
-      addNotification(err.message || 'Не удалось сохранить настройки', 'error');
+      toast.error(err.message || 'Не удалось сохранить настройки');
     } finally {
       setIsLoading(false);
     }

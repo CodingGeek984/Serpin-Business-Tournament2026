@@ -70,13 +70,13 @@ def send_message(chat_id):
         return failure
 
     data = request.get_json(silent=True) or {}
-    text = str(data.get("text", "")).strip()
-    if not text:
-        return error("text is required")
+    content = str(data.get("content", "")).strip()
+    if not content:
+        return error("content is required")
 
     user_message = store.insert(
         "ai_messages",
-        {"chat_id": chat_id, "sender": "user", "text": text},
+        {"chat_id": chat_id, "role": "user", "content": content},
     )
 
     import os
@@ -92,8 +92,22 @@ def send_message(chat_id):
         try:
             genai.configure(api_key=api_key)
             model = genai.GenerativeModel("gemini-1.5-flash")
-            # We can optionally pass previous context if we wanted, but let's keep it simple for now
-            response = model.generate_content(text)
+            
+            # Build history from previous messages (excluding the one just inserted)
+            # Gemini expects roles "user" and "model"
+            all_messages = store.filter("ai_messages", chat_id=chat_id)
+            history = []
+            for msg in all_messages:
+                if msg["id"] == user_message["id"]:
+                    continue # Skip current message
+                role = "model" if msg.get("role") == "assistant" else "user"
+                history.append({
+                    "role": role,
+                    "parts": [msg.get("content", "")]
+                })
+                
+            chat_session = model.start_chat(history=history)
+            response = chat_session.send_message(content)
             reply_text = response.text
         except Exception as e:
             reply_text = f"Ошибка генерации ответа AI: {str(e)}"
@@ -107,8 +121,8 @@ def send_message(chat_id):
         "ai_messages",
         {
             "chat_id": chat_id,
-            "sender": "assistant",
-            "text": reply_text,
+            "role": "assistant",
+            "content": reply_text,
         },
     )
     store.update("ai_chats", chat_id, {})

@@ -54,7 +54,11 @@ const Dashboard = () => {
   const activePromotions = dashboardData?.active_promotions || [];
 
   if (isLoading) {
-    return <div className="flex justify-center p-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-brand-blue)]"></div></div>;
+    return (
+      <div className="flex justify-center p-10">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-brand-blue)]"></div>
+      </div>
+    );
   }
 
   const dynamicStats = [
@@ -64,8 +68,22 @@ const Dashboard = () => {
     { label: 'Активные акции', value: dashboardData?.active_promotions_count || 0, change: '0%', trend: 'neutral' }
   ];
 
+  // Безопасное извлечение данных геймификации с дефолтными значениями для новых пользователей
+  const profileData = gamificationData?.profile || {
+    level: 1,
+    points: 0,
+    xp: 0,
+    next_level_xp: 100
+  };
+
+  const nextLevelXp = typeof profileData.next_level_xp === 'number' && profileData.next_level_xp > 0
+    ? profileData.next_level_xp
+    : 100;
+
+  const xpProgress = Math.min(100, Math.max(0, ((profileData.xp || 0) / nextLevelXp) * 100));
+
   return (
-    <motion.div 
+    <motion.div
       className="flex flex-col gap-6"
       variants={containerVariants}
       initial="hidden"
@@ -138,42 +156,40 @@ const Dashboard = () => {
               </div>
             </CardContent>
           </Card>
-          
-          {/* Gamification Widget */}
-          {gamificationData && (
-            <Card className="hover:shadow-md transition-shadow overflow-hidden relative">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-400/20 to-indigo-400/20 blur-2xl -mr-10 -mt-10 rounded-full z-0"></div>
-              <CardHeader className="relative z-10 pb-2">
-                <CardTitle className="flex items-center gap-2">
-                  <span className="text-xl">🏆</span> Уровень Бизнеса
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="relative z-10">
-                <div className="flex justify-between items-end mb-2">
-                  <div>
-                    <span className="text-sm text-gray-500 font-medium">Уровень</span>
-                    <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-600">
-                      {gamificationData.profile.level}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-sm font-bold text-gray-700">{gamificationData.profile.points} баллов</span>
+
+          {/* Gamification Widget — Защищён от паданий */}
+          <Card className="hover:shadow-md transition-shadow overflow-hidden relative">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-400/20 to-indigo-400/20 blur-2xl -mr-10 -mt-10 rounded-full z-0"></div>
+            <CardHeader className="relative z-10 pb-2">
+              <CardTitle className="flex items-center gap-2">
+                <span className="text-xl">🏆</span> Уровень Бизнеса
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="relative z-10">
+              <div className="flex justify-between items-end mb-2">
+                <div>
+                  <span className="text-sm text-gray-500 font-medium">Уровень</span>
+                  <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-600">
+                    {profileData.level}
                   </div>
                 </div>
-                
-                <div className="w-full bg-gray-100 rounded-full h-2.5 mt-4 mb-1">
-                  <div 
-                    className="bg-gradient-to-r from-purple-500 to-indigo-500 h-2.5 rounded-full" 
-                    style={{ width: `${Math.min(100, (gamificationData.profile.xp / (typeof gamificationData.profile.next_level_xp === 'number' ? gamificationData.profile.next_level_xp : 1000)) * 100)}%` }}
-                  ></div>
+                <div className="text-right">
+                  <span className="text-sm font-bold text-gray-700">{profileData.points || 0} баллов</span>
                 </div>
-                <div className="flex justify-between text-xs text-gray-400">
-                  <span>{gamificationData.profile.xp} XP</span>
-                  <span>{gamificationData.profile.next_level_xp} XP</span>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+              </div>
+
+              <div className="w-full bg-gray-100 rounded-full h-2.5 mt-4 mb-1">
+                <div
+                  className="bg-gradient-to-r from-purple-500 to-indigo-500 h-2.5 rounded-full"
+                  style={{ width: `${xpProgress}%` }}
+                ></div>
+              </div>
+              <div className="flex justify-between text-xs text-gray-400">
+                <span>{profileData.xp || 0} XP</span>
+                <span>{nextLevelXp} XP</span>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Active Loyalty Program Widget */}
           {loyaltyProgram && (
@@ -209,16 +225,27 @@ const Dashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ul className="space-y-3">
-                <li className="flex gap-2 items-start text-sm">
-                  <span className="text-blue-600 mt-0.5">•</span>
-                  <span className="text-gray-700">Запустите акцию <strong>«Счастливые часы»</strong> — у вас спад визитов с 14:00 до 16:00.</span>
-                </li>
-                <li className="flex gap-2 items-start text-sm">
-                  <span className="text-blue-600 mt-0.5">•</span>
-                  <span className="text-gray-700">Верните клиентов: 12 человек не были у вас больше месяца. <Link to="/business-tools" className="text-blue-600 hover:underline">Отправить SMS</Link></span>
-                </li>
-              </ul>
+              {dashboardData?.total_customers > 0 ? (
+                <ul className="space-y-3">
+                  <li className="flex gap-2 items-start text-sm">
+                    <span className="text-blue-600 mt-0.5">•</span>
+                    <span className="text-gray-700">Запустите акцию <strong>«Счастливые часы»</strong> — у вас спад визитов с 14:00 до 16:00.</span>
+                  </li>
+                  <li className="flex gap-2 items-start text-sm">
+                    <span className="text-blue-600 mt-0.5">•</span>
+                    <span className="text-gray-700">Верните клиентов: 12 человек не были у вас больше месяца. <Link to="/business-tools" className="text-blue-600 hover:underline">Отправить SMS</Link></span>
+                  </li>
+                </ul>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-sm text-gray-500 mb-2">
+                    Недостаточно данных для анализа.
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    Добавьте клиентов, чтобы AI смог давать рекомендации по росту выручки.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
