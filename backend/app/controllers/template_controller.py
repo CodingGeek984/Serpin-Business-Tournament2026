@@ -45,6 +45,35 @@ def create_template():
 
 
 @admin_required
+def update_template(template_id):
+    template = store.find("promotion_templates", template_id)
+    if template is None:
+        return error("Promotion template not found", 404)
+
+    data = request.get_json(silent=True) or {}
+    updates = {}
+    if "title" in data:
+        title = str(data["title"]).strip()
+        if not title:
+            return error("title is required")
+        updates["name"] = title
+    if "type" in data:
+        if data["type"] not in {"discount", "stamp", "time_discount", "winback"}:
+            return error("Unsupported template type")
+        updates["type"] = data["type"]
+    if "defaultBudget" in data:
+        if not isinstance(data["defaultBudget"], (int, float)) or data["defaultBudget"] < 0:
+            return error("defaultBudget must be a non-negative number")
+        updates["default_budget"] = data["defaultBudget"]
+    if "desc" in data:
+        updates["description"] = str(data["desc"]).strip()
+    if "is_active" in data:
+        updates["is_active"] = bool(data["is_active"])
+
+    return ok(serialize_template(store.update("promotion_templates", template_id, updates)))
+
+
+@admin_required
 def delete_template(template_id):
     template = store.find("promotion_templates", template_id)
     if template is None:

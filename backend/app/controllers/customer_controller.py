@@ -6,8 +6,28 @@ from store import store
 
 CUSTOMER_FIELDS = {
     "name", "phone", "email", "total_spent", "visits_count", "bonuses",
-    "tags", "last_visit",
+    "tags", "last_visit", "status",
 }
+
+
+def serialize_customer(customer):
+    """One stable customer shape for the CRM screens and Firebase documents."""
+    visits = int(customer.get("visits_count", customer.get("visits", 0)) or 0)
+    spent = float(customer.get("total_spent", customer.get("ltv", 0)) or 0)
+    status = customer.get("status")
+    if status not in {"new", "regular", "sleeping", "churn"}:
+        status = "regular" if visits >= 3 else "new"
+    return {
+        **customer,
+        "visits_count": visits,
+        "visits": visits,
+        "total_spent": spent,
+        "totalSpent": spent,
+        "bonuses": int(customer.get("bonuses", customer.get("stamps", 0)) or 0),
+        "stamps": int(customer.get("bonuses", customer.get("stamps", 0)) or 0),
+        "status": status,
+        "lastVisit": customer.get("last_visit", ""),
+    }
 
 
 def get_owned_customer(customer_id):
@@ -46,7 +66,7 @@ def get_customers():
             if tag in customer.get("tags", [])
         ]
 
-    return ok(customers)
+    return ok([serialize_customer(customer) for customer in customers])
 
 
 def customer_search_text(customer):
@@ -82,10 +102,9 @@ def create_customer():
     from controllers.common import current_user_id
     rewards = GamificationService.trigger_event(current_user_id(), 'ADD_CUSTOMER')
     
-    response = {"success": True, "data": created_customer}
+    response = serialize_customer(created_customer)
     if rewards:
-        response.update(rewards)
-        
+        response["gamification_rewards"] = rewards.get("gamification_rewards", [])
     return ok(response, 201)
 
 
@@ -95,7 +114,7 @@ def get_customer(customer_id):
     if failure:
         return failure
 
-    return ok(customer)
+    return ok(serialize_customer(customer))
 
 
 @business_required
@@ -110,7 +129,7 @@ def update_customer(customer_id):
         return error("tags must be an array")
 
     updated_customer = store.update("customers", customer_id, updates)
-    return ok(updated_customer)
+    return ok(serialize_customer(updated_customer))
 
 
 @business_required

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent } from '../../common/Card/Card';
-import { Calendar, Eye, MousePointerClick } from 'lucide-react';
+import { Calendar, Eye, MousePointerClick, Trash2 } from 'lucide-react';
 import Button from '../../common/Button/Button';
 import { useUser } from '../../../context/UserContext';
 import { useNotification } from '../../../context/NotificationContext';
@@ -8,7 +8,7 @@ import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 const PromotionCard = ({ promotion }) => {
-  const { updatePromotionStatus } = useUser();
+  const { updatePromotionStatus, deletePromotion } = useUser();
   const notificationContext = useNotification();
 
   // Безопасное получение функции уведомления
@@ -34,6 +34,20 @@ const PromotionCard = ({ promotion }) => {
         notify(error.message || 'Ошибка обновления статуса', 'error');
       } else {
         console.error('Ошибка обновления статуса акции:', error);
+      }
+    }
+  };
+
+  const handleDelete = async () => {
+    if (window.confirm(`Вы уверены, что хотите удалить акцию "${promotion.title}"?`)) {
+      try {
+        if (typeof deletePromotion === 'function') {
+          await deletePromotion(promotion.id);
+        }
+      } catch (error) {
+        if (typeof notify === 'function') {
+          notify(error.message || 'Ошибка удаления', 'error');
+        }
       }
     }
   };
@@ -80,8 +94,13 @@ const PromotionCard = ({ promotion }) => {
           >
             {isActive ? 'Остановить' : 'Запустить'}
           </Button>
-          <Button variant="secondary" className="px-3">
-            Изменить
+          <Button
+            variant="outline"
+            className="px-3 border-red-200 text-red-500 hover:bg-red-50 hover:text-red-600 hover:border-red-300"
+            onClick={handleDelete}
+            title="Удалить акцию"
+          >
+            <Trash2 className="w-4 h-4" />
           </Button>
         </div>
       </CardContent>

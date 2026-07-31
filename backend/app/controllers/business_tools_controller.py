@@ -1,7 +1,7 @@
 import random
 from flask import request
 from flask_jwt_extended import jwt_required
-from controllers.common import current_business, business_required, ok, error
+from controllers.common import current_business, current_user_id, business_required, ok, error
 from store import store
 
 class BusinessToolsController:
@@ -44,7 +44,55 @@ class BusinessToolsController:
     def get_active_tools():
         business = current_business()
         active_tools = store.filter("active_tools", business_id=business["id"])
+        favorite_ids = {
+            favorite["tool_id"]
+            for favorite in store.filter("favorites", user_id=current_user_id())
+            if favorite.get("favorite_type") == "business_tool"
+        }
+        for tool in active_tools:
+            tool["is_favorite"] = tool["id"] in favorite_ids
         return ok(active_tools)
+
+    @staticmethod
+    @business_required
+    def add_favorite(tool_instance_id):
+        business = current_business()
+        tool = store.find("active_tools", tool_instance_id)
+        if tool is None or tool.get("business_id") != business["id"]:
+            return error("Инструмент не найден", 404)
+
+        favorite = store.first(
+            "favorites",
+            user_id=current_user_id(),
+            tool_id=tool_instance_id,
+            favorite_type="business_tool",
+        )
+        if favorite is None:
+            favorite = store.insert("favorites", {
+                "user_id": current_user_id(),
+                "tool_id": tool_instance_id,
+                "favorite_type": "business_tool",
+            })
+        return ok(favorite, 201, message="Добавлено в избранное")
+
+    @staticmethod
+    @business_required
+    def delete_favorite(tool_instance_id):
+        business = current_business()
+        tool = store.find("active_tools", tool_instance_id)
+        if tool is None or tool.get("business_id") != business["id"]:
+            return error("Инструмент не найден", 404)
+
+        favorite = store.first(
+            "favorites",
+            user_id=current_user_id(),
+            tool_id=tool_instance_id,
+            favorite_type="business_tool",
+        )
+        if favorite is None:
+            return error("В избранном не найдено", 404)
+        store.delete("favorites", favorite["id"])
+        return ok(message="Удалено из избранного")
 
     @staticmethod
     @jwt_required()
@@ -100,7 +148,7 @@ class BusinessToolsController:
 
         return ok({
             "tool_id": tool_instance_id,
-            "tool_type": tool["tool_type"],
-            "config": tool["config"],
+            "tool_type": tool.get("tool_type", "unknown"),
+            "config": tool.get("config", {}),
             "metrics": metrics
         })

@@ -141,8 +141,10 @@ def create_admin_routes():
     routes.add_url_rule("/summary", view_func=admin_controller.get_summary, methods=["GET"])
     routes.add_url_rule("/templates", view_func=template_controller.get_admin_templates, methods=["GET"])
     routes.add_url_rule("/templates", view_func=template_controller.create_template, methods=["POST"])
+    routes.add_url_rule("/templates/<template_id>", view_func=template_controller.update_template, methods=["PUT"])
     routes.add_url_rule("/templates/<template_id>", view_func=template_controller.delete_template, methods=["DELETE"])
     routes.add_url_rule("/tools", view_func=ToolController.create_admin_tool, methods=["POST"])
+    routes.add_url_rule("/tools", view_func=ToolController.get_admin_tools, methods=["GET"])
     routes.add_url_rule("/tools/<tool_id>", view_func=ToolController.update_admin_tool, methods=["PUT"])
     routes.add_url_rule("/tools/<tool_id>", view_func=ToolController.delete_admin_tool, methods=["DELETE"])
     return routes
@@ -172,4 +174,6 @@ def create_business_tools_routes():
     routes.add_url_rule("/active", view_func=BusinessToolsController.get_active_tools, methods=["GET"])
     routes.add_url_rule("/simulate", view_func=BusinessToolsController.simulate_tool, methods=["POST"])
     routes.add_url_rule("/metrics/<tool_instance_id>", view_func=BusinessToolsController.get_tool_metrics, methods=["GET"])
+    routes.add_url_rule("/<tool_instance_id>/favorite", view_func=BusinessToolsController.add_favorite, methods=["POST"])
+    routes.add_url_rule("/<tool_instance_id>/favorite", view_func=BusinessToolsController.delete_favorite, methods=["DELETE"])
     return routes

@@ -134,5 +134,5 @@ def delete_promotion(promotion_id):
     if failure:
         return failure
 
-    store.update("promotions", promotion_id, {"is_active": False})
-    return ok(message="Promotion deactivated")
+    store.delete("promotions", promotion_id)
+    return ok(message="Promotion deleted")

@@ -20,16 +20,19 @@ class BusinessController:
         
         # Aggregate dashboard data
         promotions = store.filter("promotions", business_id=business["id"])
-        active_promotions = [p for p in promotions if p.get("status") == "active"]
+        active_promotions = [p for p in promotions if p.get("is_active", p.get("status") == "active")]
         
         customers = store.filter("customers", business_id=business["id"])
         
-        # Generate quick stats
-        monthly_revenue = sum(c.get("ltv", 0) for c in customers)
-        monthly_visits = sum(c.get("visits", 0) for c in customers)
+        # CRM stores canonical total_spent / visits_count fields.
+        monthly_revenue = sum(float(c.get("total_spent", c.get("ltv", 0)) or 0) for c in customers)
+        monthly_visits = sum(int(c.get("visits_count", c.get("visits", 0)) or 0) for c in customers)
 
         # Sort recent customers safely
         recent_customers = sorted(customers, key=lambda c: c.get("last_visit", "1970-01-01"), reverse=True)[:5]
+
+        from controllers.promotion_controller import serialize_promotion
+        serialized_promotions = [serialize_promotion(p) for p in active_promotions[:5]]
 
         data = {
             "active_promotions_count": len(active_promotions),
@@ -37,7 +40,7 @@ class BusinessController:
             "monthly_revenue": monthly_revenue,
             "monthly_visits": monthly_visits,
             "recent_customers": recent_customers,
-            "active_promotions": active_promotions[:5]
+            "active_promotions": serialized_promotions
         }
         return ok(data)
 

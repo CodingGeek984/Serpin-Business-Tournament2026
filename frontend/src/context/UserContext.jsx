@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import api from '../services/api';
-import { MOCK_STATS, MOCK_REVENUE_DATA, PROMO_TEMPLATES } from '../constants/mockData';
+import { PROMO_TEMPLATES } from '../constants/mockData';
 import { useAuth } from './AuthContext';
 import { useNotification } from './NotificationContext';
 
@@ -12,8 +12,9 @@ export const UserProvider = ({ children }) => {
   const [userProfile, setUserProfile] = useState(null);
   const [promotions, setPromotions] = useState([]);
   const [customers, setCustomers] = useState([]);
-  const [stats, setStats] = useState(MOCK_STATS); // fallback to mock for now
-  const [revenueData, setRevenueData] = useState(MOCK_REVENUE_DATA); // fallback to mock
+  const [stats, setStats] = useState({});
+  const [revenueData, setRevenueData] = useState([]);
+  const [promoTemplates, setPromoTemplates] = useState(PROMO_TEMPLATES);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchDashboardData = useCallback(async () => {
@@ -23,7 +24,8 @@ export const UserProvider = ({ children }) => {
     try {
       // 1. Fetch User / Business Profile
       const businessRes = await api.get('/business/profile').catch(() => ({ data: null }));
-      if (businessRes?.data) setUserProfile(businessRes.data);
+      const businessPayload = businessRes?.data?.data || businessRes?.data;
+      if (businessPayload) setUserProfile(businessPayload);
 
       // 2. Fetch Promotions
       const promosRes = await api.get('/promotions').catch(() => null);
@@ -36,10 +38,17 @@ export const UserProvider = ({ children }) => {
       setCustomers(Array.isArray(customersPayload) ? customersPayload : []);
 
       // 4. Fetch Analytics Summary
-      const statsRes = await api.get('/analytics/summary').catch(() => null);
-      if (statsRes?.data) {
-        // Transform backend stats format to frontend format if needed
+      const [statsRes, templatesRes] = await Promise.all([
+        api.get('/analytics/summary').catch(() => null),
+        api.get('/promotion-templates').catch(() => null),
+      ]);
+      const analyticsPayload = statsRes?.data?.data || statsRes?.data;
+      if (analyticsPayload) {
+        setStats(analyticsPayload.summary || {});
+        setRevenueData(analyticsPayload.chartData || []);
       }
+      const templatesPayload = templatesRes?.data?.data || templatesRes?.data;
+      if (Array.isArray(templatesPayload)) setPromoTemplates(templatesPayload);
     } catch (error) {
       console.error("Failed to load initial data", error);
       addNotification("Не удалось загрузить данные дашборда", "error");
@@ -56,7 +65,7 @@ export const UserProvider = ({ children }) => {
   const addPromotion = async (promoData) => {
     try {
       const res = await api.post('/promotions', promoData);
-      const newPromo = res.data || res;
+      const newPromo = res.data?.data || res.data || res;
       setPromotions((current) => [newPromo, ...current]);
       addNotification("Акция успешно создана!", "success");
       return { success: true, data: newPromo };
@@ -70,11 +79,23 @@ export const UserProvider = ({ children }) => {
   const updatePromotionStatus = async (id, status) => {
     try {
       await api.put(`/promotions/${id}`, { status });
-      setPromotions((current) => current.map(p => p.id === id ? { ...p, status } : p));
-      addNotification(`Статус акции обновлен на ${status}`, "success");
+      setPromotions((current) => current.map(p => p.id === id ? { ...p, status, is_active: status === 'active' } : p));
+      addNotification(`Статус акции обновлен на ${status === 'active' ? 'Активна' : 'Пауза'}`, "success");
     } catch (error) {
       console.error("Failed to update status", error);
       addNotification("Ошибка при обновлении статуса", "error");
+      throw error;
+    }
+  };
+
+  const deletePromotion = async (id) => {
+    try {
+      await api.delete(`/promotions/${id}`);
+      setPromotions((current) => current.filter(p => p.id !== id));
+      addNotification("Акция удалена", "info");
+    } catch (error) {
+      console.error("Failed to delete promotion", error);
+      addNotification("Ошибка при удалении акции", "error");
       throw error;
     }
   };
@@ -123,8 +144,8 @@ export const UserProvider = ({ children }) => {
   const addCustomer = async (customerData) => {
     try {
       const res = await api.post('/customers', customerData);
-      const newCustomer = res.data || res;
-      setCustomers([newCustomer, ...customers]);
+      const newCustomer = res.data?.data || res.data || res;
+      setCustomers((current) => [newCustomer, ...current]);
       addNotification("Клиент успешно добавлен", "success");
       return { success: true, data: newCustomer };
     } catch (error) {
@@ -141,10 +162,11 @@ export const UserProvider = ({ children }) => {
       promotions,
       customers,
       revenueData,
-      promoTemplates: PROMO_TEMPLATES,
+      promoTemplates,
       isLoading,
       addPromotion,
       updatePromotionStatus,
+      deletePromotion,
       toggleIntegration,
       scanPromoQR,
       addCustomer,

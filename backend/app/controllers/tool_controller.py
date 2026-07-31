@@ -75,12 +75,34 @@ class ToolController:
     @jwt_required()
     def get_favorites():
         favorites = store.filter("favorites", user_id=current_user_id())
-        favorite_tool_ids = {f["tool_id"] for f in favorites}
+        favorite_tool_ids = {
+            f["tool_id"] for f in favorites
+            if f.get("favorite_type", "catalog_tool") == "catalog_tool"
+        }
+        favorite_business_tool_ids = {
+            f["tool_id"] for f in favorites
+            if f.get("favorite_type") == "business_tool"
+        }
         result = []
 
         for tool in store.all("tools"):
             if tool["id"] in favorite_tool_ids and tool.get("is_active"):
-                result.append(ToolController._add_user_flags(tool))
+                result.append({**ToolController._add_user_flags(tool), "favorite_type": "catalog_tool"})
+
+        business = current_business()
+        if business:
+            for active_tool in store.filter("active_tools", business_id=business["id"]):
+                if active_tool["id"] not in favorite_business_tool_ids:
+                    continue
+                result.append({
+                    "id": active_tool["id"],
+                    "name": active_tool.get("config", {}).get("title", "Бизнес-инструмент"),
+                    "category": "Бизнес-инструмент",
+                    "icon": "Settings",
+                    "is_favorite": True,
+                    "favorite_type": "business_tool",
+                    "tool_type": active_tool.get("tool_type"),
+                })
 
         return ok(result)
 
@@ -144,14 +166,23 @@ class ToolController:
 
     @staticmethod
     @admin_required
+    def get_admin_tools():
+        return ok(store.all("tools"))
+
+    @staticmethod
+    @admin_required
     def create_admin_tool():
         data = request.get_json(silent=True) or {}
-        if not data.get("name") or not data.get("slug"):
+        name = str(data.get("name", "")).strip()
+        slug = str(data.get("slug", "")).strip().lower()
+        if not name or not slug:
             return error("name и slug обязательны", 400)
+        if store.first("tools", slug=slug):
+            return error("Инструмент с таким slug уже существует", 409)
             
         new_tool = store.insert("tools", {
-            "name": data["name"],
-            "slug": data["slug"],
+            "name": name,
+            "slug": slug,
             "category": data.get("category", "marketing"),
             "description": data.get("description", ""),
             "icon": data.get("icon", "Settings"),
@@ -167,7 +198,16 @@ class ToolController:
         if not tool:
             return error("Инструмент не найден", 404)
             
-        updated = store.update("tools", tool_id, data)
+        allowed = {"name", "slug", "category", "description", "icon", "is_active", "is_featured", "badge"}
+        updates = {key: value for key, value in data.items() if key in allowed}
+        if "slug" in updates:
+            updates["slug"] = str(updates["slug"]).strip().lower()
+            duplicate = store.first("tools", slug=updates["slug"])
+            if duplicate and duplicate["id"] != tool_id:
+                return error("Инструмент с таким slug уже существует", 409)
+        if "name" in updates and not str(updates["name"]).strip():
+            return error("name не может быть пустым", 400)
+        updated = store.update("tools", tool_id, updates)
         return ok(updated, message="Инструмент обновлен")
 
     @staticmethod

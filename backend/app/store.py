@@ -14,36 +14,110 @@ from uuid import uuid4
 
 
 class FirestoreStore:
-    """Firestore REST implementation bypassing gRPC and clock skew."""
+    """Firestore repository using the official Firestore REST API."""
+    REQUEST_TIMEOUT_SECONDS = (5, 20)
+    AUTH_ATTEMPTS = 3
 
     def __init__(self, service_account_path=None, project_id=None):
-        import json, requests, jwt, time
+        if not service_account_path:
+            raise RuntimeError("FIREBASE_SERVICE_ACCOUNT is required for Firestore")
+        if not os.path.isfile(service_account_path):
+            raise RuntimeError("FIREBASE_SERVICE_ACCOUNT points to a missing file")
+
+        with open(service_account_path, encoding="utf-8") as file:
+            self.service_account = json.load(file)
+        self.project_id = project_id or self.service_account.get("project_id")
+        if not self.project_id:
+            raise RuntimeError("FIREBASE_PROJECT_ID is required for Firestore")
+
+        self.auth_lock = threading.RLock()
+        self.base_url = (
+            f"https://firestore.googleapis.com/v1/projects/{self.project_id}"
+            "/databases/(default)/documents"
+        )
+        self.headers = {}
+        self._authenticate()
+
+    def _authenticate(self):
+        """Get a fresh service-account token.
+
+        Google access tokens are valid for about one hour.  Keeping this in a
+        method (rather than only in ``__init__``) lets the store recover from a
+        401 without restarting the Flask process.
+        """
+        import time
         from email.utils import parsedate_to_datetime
-        
-        self.project_id = project_id
-        self.base_url = f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/(default)/documents"
-        self._cache = {}  # In-memory cache to speed up reads
-        
-        # 1. Fetch real current time from Google to avoid 2026 skew
-        time_res = requests.head("https://oauth2.googleapis.com/token")
-        real_now = int(parsedate_to_datetime(time_res.headers["Date"]).timestamp())
-        
-        with open(service_account_path) as f:
-            sa = json.load(f)
-            
-        payload = {
-            "iss": sa["client_email"], "sub": sa["client_email"],
+        import jwt
+        import requests
+
+        # Service-account JWTs require a clock close to Google's clock. The
+        # development environment can have a shifted system time, so use the
+        # Date header from Google's OAuth server when it is available.
+        now = int(time.time())
+        try:
+            time_response = requests.head(
+                "https://oauth2.googleapis.com/token", timeout=self.REQUEST_TIMEOUT_SECONDS
+            )
+            date_header = time_response.headers.get("Date")
+            if date_header:
+                now = int(parsedate_to_datetime(date_header).timestamp())
+        except requests.RequestException:
+            pass
+
+        assertion = jwt.encode({
+            "iss": self.service_account["client_email"],
+            "sub": self.service_account["client_email"],
             "aud": "https://oauth2.googleapis.com/token",
-            "iat": real_now, "exp": real_now + 3600,
-            "scope": "https://www.googleapis.com/auth/datastore"
-        }
-        encoded_jwt = jwt.encode(payload, sa["private_key"], algorithm="RS256")
-        res = requests.post("https://oauth2.googleapis.com/token", data={
-            "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
-            "assertion": encoded_jwt
-        }).json()
-        self.token = res.get("access_token")
-        self.headers = {"Authorization": f"Bearer {self.token}"}
+            "iat": now,
+            "exp": now + 3600,
+            "scope": "https://www.googleapis.com/auth/datastore",
+        }, self.service_account["private_key"], algorithm="RS256")
+        access_token = None
+        last_error = None
+        for attempt in range(self.AUTH_ATTEMPTS):
+            try:
+                token_response = requests.post(
+                    "https://oauth2.googleapis.com/token",
+                    data={
+                        "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
+                        "assertion": assertion,
+                    },
+                    timeout=self.REQUEST_TIMEOUT_SECONDS,
+                )
+                token_response.raise_for_status()
+                access_token = token_response.json().get("access_token")
+                if access_token:
+                    break
+            except requests.RequestException as exc:
+                last_error = exc
+                # Brief backoff handles a transient TLS/DNS issue on startup.
+                if attempt < self.AUTH_ATTEMPTS - 1:
+                    time.sleep(attempt + 1)
+        if not access_token:
+            raise RuntimeError("Firebase OAuth did not return an access token") from last_error
+        self.headers = {"Authorization": f"Bearer {access_token}"}
+
+    def _request(self, method, path, **kwargs):
+        """Call Firestore and refresh the OAuth token once after a 401."""
+        import requests
+
+        def send():
+            return requests.request(
+                method, f"{self.base_url}/{path.lstrip('/')}", headers=self.headers,
+                timeout=self.REQUEST_TIMEOUT_SECONDS, **kwargs,
+            )
+
+        response = send()
+        if response.status_code != 401:
+            return response
+        # A second caller may already have refreshed the token; serialising the
+        # refresh is safe and retrying once avoids an infinite loop on bad keys.
+        with self.auth_lock:
+            response = send()
+            if response.status_code != 401:
+                return response
+            self._authenticate()
+        return send()
         
     @staticmethod
     def now():
@@ -110,84 +184,62 @@ class FirestoreStore:
             })
 
     def all(self, collection):
-        if collection in self._cache:
-            return list(self._cache[collection].values())
-
-        import requests
-        res = requests.get(f"{self.base_url}/{collection}", headers=self.headers).json()
-        documents = [self._item(doc) for doc in res.get("documents", []) if self._item(doc)]
+        response = self._request("GET", collection)
+        response.raise_for_status()
+        documents = [self._item(document) for document in response.json().get("documents", [])]
+        documents = [document for document in documents if document]
         
         if collection == "tools" and not documents:
             self._create_default_tools()
-            res = requests.get(f"{self.base_url}/{collection}", headers=self.headers).json()
-            documents = [self._item(doc) for doc in res.get("documents", []) if self._item(doc)]
+            documents = self.all(collection)
             
         if collection == "promotion_templates" and not documents:
             self._create_default_tools()
-            res = requests.get(f"{self.base_url}/{collection}", headers=self.headers).json()
-            documents = [self._item(doc) for doc in res.get("documents", []) if self._item(doc)]
-            
-        self._cache[collection] = {doc["id"]: doc for doc in documents}
-        return list(self._cache[collection].values())
+            documents = self.all(collection)
+        return documents
 
     def find(self, collection, item_id):
-        import requests
-        res = requests.get(f"{self.base_url}/{collection}/{item_id}", headers=self.headers)
-        if res.status_code != 200: return None
-        return self._item(res.json())
+        response = self._request("GET", f"{collection}/{item_id}")
+        if response.status_code == 404:
+            return None
+        response.raise_for_status()
+        return self._item(response.json())
 
     def first(self, collection, **filters):
         results = self.filter(collection, **filters)
         return results[0] if results else None
 
     def filter(self, collection, **filters):
-        # Local filter since REST API simple queries are complex
-        all_items = self.all(collection)
-        results = []
-        for item in all_items:
-            if all(item.get(k) == v for k, v in filters.items()):
-                results.append(item)
-        return results
+        return [
+            item for item in self.all(collection)
+            if all(item.get(field) == value for field, value in filters.items())
+        ]
 
     def insert(self, collection, values):
-        import requests
-        from uuid import uuid4
         item_id = str(uuid4())
         item = {"created_at": self.now(), **values}
-        url = f"{self.base_url}/{collection}/{item_id}"
-        payload = {"fields": self.dict_to_rest(item)}
-        requests.patch(url, headers=self.headers, json=payload)
-        
-        doc = {"id": item_id, **item}
-        if collection in self._cache:
-            self._cache[collection][item_id] = doc
-        return doc
+        response = self._request("PATCH", f"{collection}/{item_id}", json={"fields": self.dict_to_rest(item)})
+        response.raise_for_status()
+        return {"id": item_id, **item}
 
     def update(self, collection, item_id, values):
-        import requests
         item = self.find(collection, item_id)
-        if not item: return None
-        updated = {**item, **values, "updated_at": self.now()}
-        if "id" in updated:
-            del updated["id"] # don't upload id as a field
-            
-        url = f"{self.base_url}/{collection}/{item_id}"
-        payload = {"fields": self.dict_to_rest(updated)}
-        requests.patch(url, headers=self.headers, json=payload)
-        
-        doc = {"id": str(item_id), **updated}
-        if collection in self._cache:
-            self._cache[collection][str(item_id)] = doc
-        return doc
+        if not item:
+            return None
+        updates = {**values, "updated_at": self.now()}
+        response = self._request(
+            "PATCH", f"{collection}/{item_id}",
+            json={"fields": self.dict_to_rest({key: value for key, value in {**item, **updates}.items() if key != "id"})},
+        )
+        response.raise_for_status()
+        return {**item, **updates}
 
     def delete(self, collection, item_id):
-        import requests
         item = self.find(collection, item_id)
-        if not item: return None
-        requests.delete(f"{self.base_url}/{collection}/{item_id}", headers=self.headers)
-        
-        if collection in self._cache and str(item_id) in self._cache[collection]:
-            del self._cache[collection][str(item_id)]
+        if not item:
+            return None
+        response = self._request("DELETE", f"{collection}/{item_id}")
+        response.raise_for_status()
         return item
 
 
@@ -196,7 +248,7 @@ class JsonStore:
                    "customers", "analytics", "recommendations", "notifications",
                    "ai_chats", "ai_messages", "active_tools", "promotion_templates",
                    "gamification_profiles", "achievements", "user_achievements",
-                   "daily_tasks", "user_task_progress")
+                   "daily_tasks", "user_task_progress", "transactions")
 
     def __init__(self):
         self.path = os.environ.get("SERPIN_DATA_FILE", os.path.join(os.path.dirname(__file__), "data.json"))
@@ -332,12 +384,14 @@ class JsonStore:
 
 def create_store():
     """Use Firestore when configured; otherwise use local JSON for development."""
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
+    except ImportError:
+        pass
     service_account = os.environ.get("FIREBASE_SERVICE_ACCOUNT")
     project_id = os.environ.get("FIREBASE_PROJECT_ID")
-    emulator = os.environ.get("FIRESTORE_EMULATOR_HOST")
-    if service_account or project_id or emulator:
-        if service_account and not os.path.isfile(service_account):
-            raise RuntimeError("FIREBASE_SERVICE_ACCOUNT points to a missing file")
+    if service_account or project_id:
         return FirestoreStore(service_account, project_id)
     return JsonStore()
 

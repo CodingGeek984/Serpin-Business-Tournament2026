@@ -5,6 +5,7 @@ const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5001/api';
 
 const api = axios.create({
   baseURL: BASE_URL,
+  timeout: 8000,
   withCredentials: true, // Обязательно для CORS
   headers: {
     'Content-Type': 'application/json',

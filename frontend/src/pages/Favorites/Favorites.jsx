@@ -2,14 +2,14 @@ import React, { useEffect, useState } from 'react';
 import api from '../../services/api';
 import { Card, CardContent } from '../../components/common/Card/Card';
 import Button from '../../components/common/Button/Button';
-import { Mail, Gift, CreditCard, Brain, Check, ChevronRight, Heart } from 'lucide-react';
+import { Mail, Gift, CreditCard, Brain, ChevronRight, Heart, Settings } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNotification } from '../../context/NotificationContext';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 const iconMap = {
-  Mail, Gift, CreditCard, Brain
+  Mail, Gift, CreditCard, Brain, Settings
 };
 
 const Favorites = () => {
@@ -26,7 +26,7 @@ const Favorites = () => {
       // we get tools and filter those that are favorites
       // The API endpoint /api/tools/favorites should return just the favorites, let's use it
       const favs = await api.get('/tools/favorites');
-      setTools(favs.data || favs);
+      setTools(favs.data?.data || favs.data || []);
     } catch (error) {
       addNotification('Ошибка загрузки избранного', 'error');
     } finally {
@@ -36,7 +36,11 @@ const Favorites = () => {
 
   const removeFavorite = async (id, name) => {
     try {
-      await api.delete(`/tools/${id}/favorite`);
+      const tool = tools.find((item) => item.id === id);
+      const endpoint = tool?.favorite_type === 'business_tool'
+        ? `/business-tools/${id}/favorite`
+        : `/tools/${id}/favorite`;
+      await api.delete(endpoint);
       setTools(tools.filter(t => t.id !== id));
       addNotification(`"${name}" удален из избранного`, 'info');
     } catch (error) {

@@ -36,20 +36,20 @@ const Tools = () => {
   const [tools, setTools] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
   const [favorites, setFavorites] = useState(new Set());
-  const [filter, setFilter] = useState('all'); // all, active, inactive
+  const [filter, setFilter] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
 
   const loadData = async () => {
     try {
       const [toolsRes, recRes] = await Promise.all([
-        api('/tools', { token }),
-        api('/tools/recommendations', { token }).catch(() => ({ data: [] }))
+        api.get('/tools'),
+        api.get('/tools/recommendations').catch(() => ({ data: { data: [] } }))
       ]);
-      const items = toolsRes.data || toolsRes;
+      const items = toolsRes.data?.data || toolsRes.data || [];
       setTools(items.map((item) => ({ ...item, active: item.is_activated })));
       setFavorites(new Set(items.filter((item) => item.is_favorite).map((item) => item.id)));
       
-      const recs = recRes.data || recRes || [];
+      const recs = recRes.data?.data || recRes.data || [];
       setRecommendations(recs.map((item) => ({ ...item, active: item.is_activated })));
     } catch (error) {
       addNotification(error.message, 'error');
@@ -60,12 +60,16 @@ const Tools = () => {
 
   useEffect(() => {
     loadData();
-  }, [token, addNotification]);
+  }, [addNotification]);
 
   const toggleFavorite = async (id, name) => {
     const isFavorite = favorites.has(id);
     try {
-      await api(`/tools/${id}/favorite`, { method: isFavorite ? 'DELETE' : 'POST', token });
+      if (isFavorite) {
+        await api.delete(`/tools/${id}/favorite`);
+      } else {
+        await api.post(`/tools/${id}/favorite`);
+      }
       setFavorites((current) => {
         const next = new Set(current);
         if (isFavorite) {
@@ -89,11 +93,8 @@ const Tools = () => {
     }
   };
 
-  const filteredTools = tools.filter(t => {
-    if (filter === 'active') return t.active;
-    if (filter === 'inactive') return !t.active;
-    return true;
-  });
+  const categories = ['all', ...new Set(tools.map((tool) => tool.category).filter(Boolean))];
+  const filteredTools = tools.filter((tool) => filter === 'all' || tool.category === filter);
 
   return (
     <motion.div
@@ -109,20 +110,16 @@ const Tools = () => {
         </div>
 
         <div className="flex gap-2 bg-gray-100 p-1 rounded-lg">
-          {[
-            { id: 'all', label: 'Все' },
-            { id: 'active', label: 'Подключенные' },
-            { id: 'inactive', label: 'Доступные' }
-          ].map(tab => (
+          {categories.map((category) => (
             <button
-              key={tab.id}
-              onClick={() => setFilter(tab.id)}
+              key={category}
+              onClick={() => setFilter(category)}
               className={twMerge(clsx(
                 "px-4 py-1.5 text-sm font-medium rounded-md transition-colors",
-                filter === tab.id ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700"
+                filter === category ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700"
               ))}
             >
-              {tab.label}
+              {category === 'all' ? 'Все' : category}
             </button>
           ))}
         </div>

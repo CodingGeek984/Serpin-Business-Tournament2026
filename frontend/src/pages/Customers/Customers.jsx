@@ -4,16 +4,24 @@ import { useUser } from '../../context/UserContext';
 import { useNotification } from '../../context/NotificationContext';
 import { Card } from '../../components/common/Card/Card';
 import Button from '../../components/common/Button/Button';
-import { Search, MessageCircle } from 'lucide-react';
+import { Search, MessageCircle, Plus, X } from 'lucide-react';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 const Customers = () => {
-  const { customers, isLoading } = useUser();
+  const { customers, isLoading, addCustomer } = useUser();
   const { addNotification } = useNotification();
   const navigate = useNavigate();
   const [filter, setFilter] = useState('all'); // all, regular, sleeping, new, churn
   const [search, setSearch] = useState('');
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ name: '', phone: '', email: '', visits_count: 0, total_spent: 0, status: 'new' });
+  const [saving, setSaving] = useState(false);
+
+  const createCustomer = async (event) => {
+    event.preventDefault(); setSaving(true);
+    try { await addCustomer({ ...form, visits_count: Number(form.visits_count), total_spent: Number(form.total_spent), tags: [] }); setForm({ name: '', phone: '', email: '', visits_count: 0, total_spent: 0, status: 'new' }); setShowForm(false); } finally { setSaving(false); }
+  };
 
   const filteredCustomers = customers.filter(c => {
     const matchesFilter = filter === 'all' || c.status === filter;
@@ -59,6 +67,7 @@ const Customers = () => {
           <Button variant="outline" className="gap-2">
             Экспорт
           </Button>
+          <Button className="gap-2" onClick={() => setShowForm(true)}><Plus className="w-4 h-4" />Клиент</Button>
         </div>
       </div>
 
@@ -149,6 +158,7 @@ const Customers = () => {
           </table>
         </div>
       </Card>
+      {showForm && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"><form onSubmit={createCustomer} className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"><div className="mb-5 flex items-center justify-between"><h2 className="text-xl font-bold">Новый клиент</h2><button type="button" onClick={() => setShowForm(false)}><X /></button></div><div className="grid gap-3"><input required placeholder="Имя клиента" value={form.name} onChange={(e) => setForm({...form,name:e.target.value})} className="rounded-lg border p-3"/><input placeholder="Телефон" value={form.phone} onChange={(e) => setForm({...form,phone:e.target.value})} className="rounded-lg border p-3"/><input type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({...form,email:e.target.value})} className="rounded-lg border p-3"/><div className="grid grid-cols-2 gap-3"><input min="0" type="number" placeholder="Визитов" value={form.visits_count} onChange={(e) => setForm({...form,visits_count:e.target.value})} className="rounded-lg border p-3"/><input min="0" type="number" placeholder="Потрачено, ₸" value={form.total_spent} onChange={(e) => setForm({...form,total_spent:e.target.value})} className="rounded-lg border p-3"/></div><select value={form.status} onChange={(e) => setForm({...form,status:e.target.value})} className="rounded-lg border p-3"><option value="new">Новый</option><option value="regular">Постоянный</option><option value="sleeping">Уснувший</option><option value="churn">Отток</option></select><Button type="submit" disabled={saving}>{saving ? 'Сохраняем...' : 'Добавить клиента'}</Button></div></form></div>}
     </div>
   );
 };

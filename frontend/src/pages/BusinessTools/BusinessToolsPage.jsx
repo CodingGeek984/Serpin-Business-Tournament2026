@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
-import { Play, Activity, Users, DollarSign, Plus } from 'lucide-react';
+import { Activity, Users, DollarSign, Plus, Heart } from 'lucide-react';
 import BusinessToolWizard from '../../components/business_tools/BusinessToolWizard';
 import Button from '../../components/common/Button/Button';
 import { motion } from 'framer-motion';
@@ -37,7 +37,7 @@ const BusinessToolsPage = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2 }}
       >
-        {activeTab === 'active' ? <ActiveToolsList onNavigateToWizard={() => setActiveTab('wizard')} /> : <BusinessToolWizard />}
+        {activeTab === 'active' ? <ActiveToolsList onNavigateToWizard={() => setActiveTab('wizard')} /> : <BusinessToolWizard onComplete={() => setActiveTab('active')} />}
       </motion.div>
     </div>
   );
@@ -50,15 +50,15 @@ const ActiveToolsList = ({ onNavigateToWizard }) => {
   useEffect(() => {
     const fetchTools = async () => {
       try {
-        const res = await api('/business-tools/active');
+        const res = await api.get('/business-tools/active');
         // Fetch metrics for each tool to show on card
-        const activeTools = res.data || res;
+        const activeTools = res.data.data || res.data || [];
         
         const toolsWithMetrics = await Promise.all(
           activeTools.map(async (tool) => {
              try {
-                const metricRes = await api(`/business-tools/metrics/${tool.id}`);
-                return metricRes.data || metricRes;
+                const metricRes = await api.get(`/business-tools/metrics/${tool.id}`);
+                return { ...tool, ...(metricRes.data.data || metricRes.data) };
              } catch(e) {
                 return { ...tool, metrics: { new_customers: 0, revenue_generated: 0 } };
              }
@@ -94,13 +94,41 @@ const ActiveToolsList = ({ onNavigateToWizard }) => {
     );
   }
 
+  const toggleFavorite = async (tool) => {
+    const endpoint = `/business-tools/${tool.tool_id || tool.id}/favorite`;
+    try {
+      if (tool.is_favorite) {
+        await api.delete(endpoint);
+      } else {
+        await api.post(endpoint);
+      }
+      setTools((current) => current.map((item) => (
+        (item.tool_id || item.id) === (tool.tool_id || tool.id)
+          ? { ...item, is_favorite: !tool.is_favorite }
+          : item
+      )));
+    } catch (error) {
+      console.error('Не удалось обновить избранное', error);
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {tools.map(tool => (
         <div key={tool.tool_id || tool.id} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex justify-between items-start mb-4">
             <h4 className="font-bold text-lg text-gray-900 line-clamp-2">{tool.config?.title || 'Инструмент'}</h4>
-            <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full">Активен</span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => toggleFavorite(tool)}
+                aria-label={tool.is_favorite ? 'Убрать из избранного' : 'Добавить в избранное'}
+                className={`p-2 rounded-full transition-colors ${tool.is_favorite ? 'bg-red-50 text-red-500' : 'text-gray-300 hover:bg-gray-50 hover:text-red-400'}`}
+              >
+                <Heart className="w-5 h-5" fill={tool.is_favorite ? 'currentColor' : 'none'} />
+              </button>
+              <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full">Активен</span>
+            </div>
           </div>
           <p className="text-sm text-gray-500 mb-6">Тип: {tool.tool_type === 'promotion' ? 'Промоакция' : tool.tool_type}</p>
           

@@ -4,7 +4,7 @@ import { Settings, Play, BarChart, ChevronRight, Activity } from 'lucide-react';
 import Button from '../common/Button/Button';
 import { useNavigate } from 'react-router-dom';
 
-const BusinessToolWizard = () => {
+const BusinessToolWizard = ({ onComplete }) => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [config, setConfig] = useState({
@@ -22,14 +22,11 @@ const BusinessToolWizard = () => {
     const runSimulation = async () => {
       setIsSimulating(true);
       try {
-        const res = await api('/business-tools/simulate', {
-          method: 'POST',
-          body: JSON.stringify({
-            tool_type: 'promotion',
-            config: config
-          })
+        const res = await api.post('/business-tools/simulate', {
+          tool_type: 'promotion',
+          config: config
         });
-        setSimulation(res.data || res);
+        setSimulation(res.data.data || res.data);
       } catch (err) {
         console.error(err);
       } finally {
@@ -43,14 +40,18 @@ const BusinessToolWizard = () => {
 
   const handleLaunch = async () => {
     try {
-      await api('/business-tools/launch', {
-        method: 'POST',
-        body: JSON.stringify({
-          tool_type: 'promotion',
-          config: config
-        })
+      await api.post('/business-tools/launch', {
+        tool_type: 'promotion',
+        config: config
       });
-      navigate('/dashboard');
+      import('react-hot-toast').then(({ default: toast }) => {
+        toast.success('Инструмент успешно запущен!', { duration: 3000 });
+      });
+      if (onComplete) {
+        onComplete();
+      } else {
+        navigate('/business-tools');
+      }
     } catch (err) {
       alert('Ошибка при запуске инструмента');
     }
