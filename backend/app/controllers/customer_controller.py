@@ -1,4 +1,5 @@
-from flask import request
+from flask import current_app, request
+from datetime import date
 
 from controllers.common import access_denied, business_required, current_business, error, ok
 from store import store
@@ -85,6 +86,12 @@ def create_customer():
         return error("name is required")
     if not isinstance(tags, list):
         return error("tags must be an array")
+    for field in ("total_spent", "visits_count", "bonuses"):
+        value = data.get(field, 0)
+        if not isinstance(value, (int, float)) or isinstance(value, bool) or value < 0:
+            return error(f"{field} must be a non-negative number")
+    if data.get("status", "new") not in {"new", "regular", "sleeping", "churn"}:
+        return error("status is invalid")
 
     customer = customer_fields(data)
     customer["business_id"] = current_business()["id"]
@@ -95,12 +102,19 @@ def create_customer():
     customer["visits_count"] = data.get("visits_count", 0)
     customer["bonuses"] = data.get("bonuses", 0)
     customer["tags"] = tags
+    customer["last_visit"] = data.get("last_visit") or date.today().isoformat()
 
     created_customer = store.insert("customers", customer)
     
-    from services.gamification_service import GamificationService
-    from controllers.common import current_user_id
-    rewards = GamificationService.trigger_event(current_user_id(), 'ADD_CUSTOMER')
+    # Saving a CRM record must not fail because an optional achievement/task
+    # update is temporarily unavailable in Firestore.
+    rewards = None
+    try:
+        from services.gamification_service import GamificationService
+        from controllers.common import current_user_id
+        rewards = GamificationService.trigger_event(current_user_id(), 'ADD_CUSTOMER')
+    except Exception:
+        current_app.logger.exception("Customer saved but gamification update failed")
     
     response = serialize_customer(created_customer)
     if rewards:
@@ -127,6 +141,11 @@ def update_customer(customer_id):
     updates = customer_fields(data)
     if "tags" in updates and not isinstance(updates["tags"], list):
         return error("tags must be an array")
+    for field in ("total_spent", "visits_count", "bonuses"):
+        if field in updates and (not isinstance(updates[field], (int, float)) or isinstance(updates[field], bool) or updates[field] < 0):
+            return error(f"{field} must be a non-negative number")
+    if "status" in updates and updates["status"] not in {"new", "regular", "sleeping", "churn"}:
+        return error("status is invalid")
 
     updated_customer = store.update("customers", customer_id, updates)
     return ok(serialize_customer(updated_customer))

@@ -4,29 +4,57 @@ import { useUser } from '../../context/UserContext';
 import { useNotification } from '../../context/NotificationContext';
 import { Card } from '../../components/common/Card/Card';
 import Button from '../../components/common/Button/Button';
-import { Search, MessageCircle, Plus, X } from 'lucide-react';
+import { Search, MessageCircle, Plus, X, Pencil, Trash2 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 const Customers = () => {
-  const { customers, isLoading, addCustomer } = useUser();
+  const { customers, isLoading, addCustomer, updateCustomer, deleteCustomer } = useUser();
   const { addNotification } = useNotification();
   const navigate = useNavigate();
   const [filter, setFilter] = useState('all'); // all, regular, sleeping, new, churn
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', phone: '', email: '', visits_count: 0, total_spent: 0, status: 'new' });
+  const emptyCustomer = { name: '', phone: '', email: '', visits_count: 0, total_spent: 0, status: 'new' };
+  const [form, setForm] = useState(emptyCustomer);
   const [saving, setSaving] = useState(false);
+  const [recentlyAddedId, setRecentlyAddedId] = useState(null);
+  const [editingCustomer, setEditingCustomer] = useState(null);
 
   const createCustomer = async (event) => {
     event.preventDefault(); setSaving(true);
-    try { await addCustomer({ ...form, visits_count: Number(form.visits_count), total_spent: Number(form.total_spent), tags: [] }); setForm({ name: '', phone: '', email: '', visits_count: 0, total_spent: 0, status: 'new' }); setShowForm(false); } finally { setSaving(false); }
+    try {
+      const payload = { ...form, visits_count: Number(form.visits_count), total_spent: Number(form.total_spent), tags: editingCustomer?.tags || [] };
+      if (editingCustomer) {
+        await updateCustomer(editingCustomer.id, payload);
+      } else {
+        const result = await addCustomer(payload);
+        setRecentlyAddedId(result.data.id);
+        window.setTimeout(() => setRecentlyAddedId(null), 3000);
+      }
+      setForm(emptyCustomer);
+      setShowForm(false);
+      setEditingCustomer(null);
+    } finally { setSaving(false); }
+  };
+
+  const openCreate = () => { setEditingCustomer(null); setForm(emptyCustomer); setShowForm(true); };
+  const openEdit = (event, customer) => {
+    event.stopPropagation();
+    setEditingCustomer(customer);
+    setForm({ name: customer.name || '', phone: customer.phone || '', email: customer.email || '', visits_count: customer.visits_count ?? customer.visits ?? 0, total_spent: customer.total_spent ?? customer.totalSpent ?? 0, status: customer.status || 'new' });
+    setShowForm(true);
+  };
+  const removeCustomer = async (event, customer) => {
+    event.stopPropagation();
+    if (window.confirm(`Удалить клиента «${customer.name}» из базы?`)) await deleteCustomer(customer.id);
   };
 
   const filteredCustomers = customers.filter(c => {
     const matchesFilter = filter === 'all' || c.status === filter;
     const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.phone.includes(search) ||
+      String(c.phone || '').includes(search) ||
       (c.email && c.email.toLowerCase().includes(search.toLowerCase()));
     return matchesFilter && matchesSearch;
   });
@@ -67,7 +95,7 @@ const Customers = () => {
           <Button variant="outline" className="gap-2">
             Экспорт
           </Button>
-          <Button className="gap-2" onClick={() => setShowForm(true)}><Plus className="w-4 h-4" />Клиент</Button>
+          <Button className="gap-2" onClick={openCreate}><Plus className="w-4 h-4" />Добавить клиента</Button>
         </div>
       </div>
 
@@ -126,14 +154,20 @@ const Customers = () => {
                   </td>
                 </tr>
               ) : (
-                filteredCustomers.map(customer => (
-                  <tr
+                <AnimatePresence initial={false}>
+                {filteredCustomers.map(customer => (
+                  <motion.tr
                     key={customer.id}
+                    layout
+                    initial={{ opacity: 0, y: -18, backgroundColor: '#dcfce7' }}
+                    animate={{ opacity: 1, y: 0, backgroundColor: recentlyAddedId === customer.id ? '#dcfce7' : 'rgba(255,255,255,0)' }}
+                    exit={{ opacity: 0, x: -12 }}
+                    transition={{ duration: 0.35 }}
                     onClick={() => navigate(`/customers/${customer.id}`)}
                     className="hover:bg-blue-50/30 transition-colors cursor-pointer group"
                   >
                     <td className="px-6 py-4">
-                      <div className="font-medium text-gray-900 group-hover:text-[var(--color-brand-blue)] transition-colors">{customer.name}</div>
+                      <div className="font-medium text-gray-900 group-hover:text-[var(--color-brand-blue)] transition-colors flex items-center gap-2">{customer.name}{recentlyAddedId === customer.id && <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">Добавлен</span>}</div>
                       <div className="text-xs text-gray-500 mt-0.5">{customer.phone}</div>
                     </td>
                     <td className="px-6 py-4">{getStatusBadge(customer.status)}</td>
@@ -149,16 +183,19 @@ const Customers = () => {
                         >
                           <MessageCircle className="w-4 h-4" />
                         </button>
+                        <button onClick={(event) => openEdit(event, customer)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title="Редактировать клиента"><Pencil className="w-4 h-4" /></button>
+                        <button onClick={(event) => removeCustomer(event, customer)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-md transition-colors" title="Удалить клиента"><Trash2 className="w-4 h-4" /></button>
                       </div>
                     </td>
-                  </tr>
+                  </motion.tr>
                 ))
+                }</AnimatePresence>
               )}
             </tbody>
           </table>
         </div>
       </Card>
-      {showForm && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"><form onSubmit={createCustomer} className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"><div className="mb-5 flex items-center justify-between"><h2 className="text-xl font-bold">Новый клиент</h2><button type="button" onClick={() => setShowForm(false)}><X /></button></div><div className="grid gap-3"><input required placeholder="Имя клиента" value={form.name} onChange={(e) => setForm({...form,name:e.target.value})} className="rounded-lg border p-3"/><input placeholder="Телефон" value={form.phone} onChange={(e) => setForm({...form,phone:e.target.value})} className="rounded-lg border p-3"/><input type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({...form,email:e.target.value})} className="rounded-lg border p-3"/><div className="grid grid-cols-2 gap-3"><input min="0" type="number" placeholder="Визитов" value={form.visits_count} onChange={(e) => setForm({...form,visits_count:e.target.value})} className="rounded-lg border p-3"/><input min="0" type="number" placeholder="Потрачено, ₸" value={form.total_spent} onChange={(e) => setForm({...form,total_spent:e.target.value})} className="rounded-lg border p-3"/></div><select value={form.status} onChange={(e) => setForm({...form,status:e.target.value})} className="rounded-lg border p-3"><option value="new">Новый</option><option value="regular">Постоянный</option><option value="sleeping">Уснувший</option><option value="churn">Отток</option></select><Button type="submit" disabled={saving}>{saving ? 'Сохраняем...' : 'Добавить клиента'}</Button></div></form></div>}
+      <AnimatePresence>{showForm && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"><motion.form initial={{ opacity: 0, scale: 0.95, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 16 }} onSubmit={createCustomer} className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"><div className="mb-5 flex items-center justify-between"><h2 className="text-xl font-bold">{editingCustomer ? 'Редактировать клиента' : 'Новый клиент'}</h2><button type="button" onClick={() => { setShowForm(false); setEditingCustomer(null); }}><X /></button></div><div className="grid gap-3"><input required placeholder="Имя клиента" value={form.name} onChange={(e) => setForm({...form,name:e.target.value})} className="rounded-lg border p-3"/><input placeholder="Телефон" value={form.phone} onChange={(e) => setForm({...form,phone:e.target.value})} className="rounded-lg border p-3"/><input type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({...form,email:e.target.value})} className="rounded-lg border p-3"/><div className="grid grid-cols-2 gap-3"><input min="0" type="number" placeholder="Визитов" value={form.visits_count} onChange={(e) => setForm({...form,visits_count:e.target.value})} className="rounded-lg border p-3"/><input min="0" type="number" placeholder="Потрачено, ₸" value={form.total_spent} onChange={(e) => setForm({...form,total_spent:e.target.value})} className="rounded-lg border p-3"/></div><select value={form.status} onChange={(e) => setForm({...form,status:e.target.value})} className="rounded-lg border p-3"><option value="new">Новый</option><option value="regular">Постоянный</option><option value="sleeping">Уснувший</option><option value="churn">Отток</option></select><Button type="submit" disabled={saving}>{saving ? 'Сохраняем...' : editingCustomer ? 'Сохранить изменения' : 'Добавить клиента'}</Button></div></motion.form></motion.div>}</AnimatePresence>
     </div>
   );
 };

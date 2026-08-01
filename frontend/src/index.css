@@ -1,14 +1,14 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-blue: #1877f2;
-  --color-brand-blue-hover: #166fe5;
-  --color-bg-primary: #f0f2f5;
+  --color-brand-blue: #059669;
+  --color-brand-blue-hover: #047857;
+  --color-bg-primary: #F8FAFC;
   --color-bg-card: #ffffff;
-  --color-text-primary: #050505;
-  --color-text-secondary: #65676B;
-  --color-hover-bg: #e4e6eb;
-  --color-border: #ced0d4;
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #64748B;
+  --color-hover-bg: #ECFDF5;
+  --color-border: #E2E8F0;
 }
 
 @layer base {
@@ -17,4 +17,44 @@
     color: var(--color-text-primary);
     font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   }
+}
+
+/* Neo-fintech palette: visual tokens only; layout and component structure stay intact. */
+@layer utilities {
+  [class*="bg-blue-50"], [class*="bg-indigo-50"], [class*="bg-purple-50"] { background-color: #EEF2FF; }
+  [class*="bg-blue-100"], [class*="bg-indigo-100"], [class*="bg-purple-100"] { background-color: #E0E7FF; }
+  [class*="bg-blue-200"], [class*="bg-indigo-200"] { background-color: #C7D2FE; }
+  [class*="bg-blue-500"], [class*="bg-indigo-500"], [class*="bg-purple-500"],
+  [class*="bg-blue-600"], [class*="bg-indigo-600"], [class*="bg-purple-600"] { background-color: #4F46E5; }
+  [class*="bg-blue-700"], [class*="bg-indigo-700"] { background-color: #4338CA; }
+
+  [class*="text-blue-"], [class*="text-indigo-"], [class*="text-purple-"] { color: #4F46E5; }
+  [class*="border-blue-"], [class*="border-indigo-"], [class*="border-purple-"] { border-color: #C7D2FE; }
+  [class*="ring-blue-"] { --tw-ring-color: #4F46E5; }
+
+  [class*="bg-emerald-"], [class*="bg-green-"] { background-color: #059669; }
+  [class*="text-emerald-"], [class*="text-green-"] { color: #047857; }
+  [class*="border-emerald-"], [class*="border-green-"] { border-color: #A7F3D0; }
+
+  [class*="bg-emerald-50"], [class*="bg-green-50"] { background-color: #ECFDF5; }
+  [class*="bg-emerald-100"], [class*="bg-green-100"] { background-color: #D1FAE5; }
+  [class*="bg-emerald-400"], [class*="bg-emerald-500"], [class*="bg-emerald-600"], [class*="bg-green-500"], [class*="bg-green-600"] { background-color: #059669; }
+  [class*="bg-emerald-700"] { background-color: #047857; }
+
+  [class*="bg-amber-"], [class*="bg-orange-"] { background-color: #FFB800; }
+  [class*="text-amber-"], [class*="text-orange-"] { color: #C65D00; }
+  [class*="border-amber-"], [class*="border-orange-"] { border-color: #FFD66B; }
+
+  /* Filled favourite controls retain a dedicated rose accent. */
+  [class*="rounded-full"][class*="text-red-500"] { color: #F43F5E; }
+  [class*="rounded-full"][class*="bg-red-50"] { background-color: #FFF1F2; }
+
+  [class*="hover:bg-blue-"]:hover, [class*="hover:bg-indigo-"]:hover,
+  [class*="hover:bg-purple-"]:hover { background-color: #4338CA; }
+  [class*="hover:text-blue-"]:hover, [class*="hover:text-indigo-"]:hover,
+  [class*="hover:text-purple-"]:hover { color: #4F46E5; }
+
+  [class*="from-blue-50"], [class*="from-indigo-50"] { --tw-gradient-from: #ECFDF5 var(--tw-gradient-from-position); --tw-gradient-to: rgb(236 253 245 / 0) var(--tw-gradient-to-position); }
+  [class*="from-blue-600"], [class*="from-indigo-600"], [class*="from-purple-600"] { --tw-gradient-from: #059669 var(--tw-gradient-from-position); --tw-gradient-to: rgb(5 150 105 / 0) var(--tw-gradient-to-position); }
+  [class*="to-indigo-"], [class*="to-blue-"], [class*="to-purple-"] { --tw-gradient-to: #4F46E5 var(--tw-gradient-to-position); }
 }
