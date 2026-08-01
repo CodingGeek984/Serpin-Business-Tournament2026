@@ -18,7 +18,7 @@ export const UserProvider = ({ children }) => {
 
   const fetchDashboardData = useCallback(async () => {
     if (!isAuthenticated) return;
-    
+
     setIsLoading(true);
     try {
       // 1. Fetch User / Business Profile
@@ -36,7 +36,7 @@ export const UserProvider = ({ children }) => {
       // 4. Fetch Analytics Summary
       const statsRes = await api.get('/analytics/summary').catch(() => null);
       if (statsRes?.data) {
-         // Transform backend stats format to frontend format if needed
+        // Transform backend stats format to frontend format if needed
       }
     } catch (error) {
       console.error("Failed to load initial data", error);
@@ -77,6 +77,19 @@ export const UserProvider = ({ children }) => {
     }
   };
 
+  // ✅ ДОБАВЛЕНА НЕДОСТАЮЩАЯ ФУНКЦИЯ DELETEPROMOTION
+  const deletePromotion = async (id) => {
+    try {
+      await api.delete(`/promotions/${id}`);
+      setPromotions(prev => prev.filter(p => p.id !== id));
+      addNotification("Акция успешно удалена", "success");
+    } catch (error) {
+      console.error("Failed to delete promotion", error);
+      addNotification("Ошибка при удалении акции", "error");
+      throw error;
+    }
+  };
+
   const toggleIntegration = async (key) => {
     setUserProfile(prev => {
       if (!prev) return prev;
@@ -88,10 +101,10 @@ export const UserProvider = ({ children }) => {
         }
       };
     });
-    
+
     try {
-      await api.put('/business', { 
-        integrations: { [key]: !userProfile?.integrations?.[key] } 
+      await api.put('/business', {
+        integrations: { [key]: !userProfile?.integrations?.[key] }
       });
       addNotification("Статус интеграции обновлен", "success");
     } catch (error) {
@@ -102,12 +115,12 @@ export const UserProvider = ({ children }) => {
 
   const scanPromoQR = async (promoId, qrData = "") => {
     try {
-      await api.post('/analytics/record', { 
-        event_type: 'scan', 
+      await api.post('/analytics/record', {
+        event_type: 'scan',
         promotion_id: promoId,
         metadata: { qr: qrData }
       });
-      
+
       setPromotions(prev => prev.map(p => p.id === promoId ? { ...p, conversions: p.conversions + 1 } : p));
       addNotification("QR-код успешно отсканирован", "success");
       return { success: true };
@@ -139,9 +152,9 @@ export const UserProvider = ({ children }) => {
       promotions,
       customers,
       revenueData,
-      promoTemplates: PROMO_TEMPLATES, 
+      promoTemplates: PROMO_TEMPLATES,
       isLoading,
-      addPromotion, 
+      addPromotion,
       updatePromotionStatus,
       deletePromotion,
       toggleIntegration,

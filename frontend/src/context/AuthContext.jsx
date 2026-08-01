@@ -33,11 +33,11 @@ export const AuthProvider = ({ children }) => {
       // Temporary fallback to mock data if backend isn't ready
       // const response = await api.post('/auth/login', { email, password });
       // const { token, user } = response.data;
-      
+
       // MOCK LOGIN FOR NOW to prevent breaking the flow before backend DB is fully seeded
       const token = "mock_jwt_token_12345";
       const userData = MOCK_USER;
-      
+
       localStorage.setItem('token', token);
       setUser(userData);
       setIsAuthenticated(true);
@@ -50,7 +50,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await api.post('/auth/logout').catch(() => {});
+      await api.post('/auth/logout').catch(() => { });
     } finally {
       localStorage.removeItem('token');
       setUser(null);

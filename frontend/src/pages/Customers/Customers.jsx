@@ -173,32 +173,48 @@ const Customers = () => {
                     onClick={() => setSelectedCustomer(null)}
                     className="xl:hidden text-gray-400 hover:text-gray-600"
                   >
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-gray-900 group-hover:text-[var(--color-brand-blue)] transition-colors">{customer.name}</div>
-                      <div className="text-xs text-gray-500 mt-0.5">{customer.phone}</div>
-                    </td>
-                    <td className="px-6 py-4">{getStatusBadge(customer.status)}</td>
-                    <td className="px-6 py-4 font-medium">{customer.visits}</td>
-                    <td className="px-6 py-4 font-medium text-emerald-600">{customer.totalSpent?.toLocaleString() || 0} ₸</td>
-                    <td className="px-6 py-4 text-gray-500">{customer.lastVisit || 'Нет данных'}</td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          onClick={(e) => handleWhatsApp(e, customer)}
-                          className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
-                          title="Написать в WhatsApp"
-                        >
-                          <MessageCircle className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="mt-4">
+                  <h3 className="text-xl font-bold text-gray-900">{selectedCustomer.name}</h3>
+                  <p className="text-gray-500 mt-1">{selectedCustomer.phone}</p>
+                  
+                  <div className="mt-6 space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500">Статус</span>
+                      {getStatusBadge(selectedCustomer.status)}
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500">Визиты</span>
+                      <span className="font-medium">{selectedCustomer.visits}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500">Потрачено</span>
+                      <span className="font-medium text-emerald-600">{selectedCustomer.totalSpent?.toLocaleString() || 0} ₸</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500">Последний визит</span>
+                      <span className="font-medium">{selectedCustomer.lastVisit || 'Нет данных'}</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-8">
+                    <Button 
+                      className="w-full bg-emerald-500 hover:bg-emerald-600 flex items-center justify-center gap-2"
+                      onClick={(e) => handleWhatsApp(selectedCustomer)}
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      Написать
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </div>
       {showForm && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"><form onSubmit={createCustomer} className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"><div className="mb-5 flex items-center justify-between"><h2 className="text-xl font-bold">Новый клиент</h2><button type="button" onClick={() => setShowForm(false)}><X /></button></div><div className="grid gap-3"><input required placeholder="Имя клиента" value={form.name} onChange={(e) => setForm({...form,name:e.target.value})} className="rounded-lg border p-3"/><input placeholder="Телефон" value={form.phone} onChange={(e) => setForm({...form,phone:e.target.value})} className="rounded-lg border p-3"/><input type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({...form,email:e.target.value})} className="rounded-lg border p-3"/><div className="grid grid-cols-2 gap-3"><input min="0" type="number" placeholder="Визитов" value={form.visits_count} onChange={(e) => setForm({...form,visits_count:e.target.value})} className="rounded-lg border p-3"/><input min="0" type="number" placeholder="Потрачено, ₸" value={form.total_spent} onChange={(e) => setForm({...form,total_spent:e.target.value})} className="rounded-lg border p-3"/></div><select value={form.status} onChange={(e) => setForm({...form,status:e.target.value})} className="rounded-lg border p-3"><option value="new">Новый</option><option value="regular">Постоянный</option><option value="sleeping">Уснувший</option><option value="churn">Отток</option></select><Button type="submit" disabled={saving}>{saving ? 'Сохраняем...' : 'Добавить клиента'}</Button></div></form></div>}
     </div>
   );

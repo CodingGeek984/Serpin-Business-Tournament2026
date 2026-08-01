@@ -17,7 +17,7 @@ const PRESET_PROMPTS = [
 ];
 
 const AIChat = () => {
-  const { messages, isTyping, sendMessage, clearHistory } = useAI();
+  const { messages, isTyping, systemAction, sendMessage, clearHistory } = useAI();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
 
@@ -108,6 +108,20 @@ const AIChat = () => {
               </div>
               <div className="p-4 rounded-2xl rounded-tl-none bg-white border border-gray-100 shadow-sm flex items-center">
                 <Loader2 className="h-4 w-4 animate-spin text-[var(--color-brand-blue)]" />
+              </div>
+            </motion.div>
+          )}
+          {systemAction && (
+            <motion.div 
+              key="systemAction"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="flex justify-center my-2"
+            >
+              <div className="bg-blue-50 text-blue-600 px-4 py-2 rounded-full text-xs font-medium flex items-center shadow-sm border border-blue-100">
+                <Sparkles className="w-3.5 h-3.5 mr-2 animate-pulse" />
+                {systemAction}
               </div>
             </motion.div>
           )}

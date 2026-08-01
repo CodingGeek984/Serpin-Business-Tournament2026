@@ -29,35 +29,50 @@ export const NotificationProvider = ({ children }) => {
     fetchNotifications();
     const token = localStorage.getItem('token');
     
-    // Connect to SSE
-    const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-    const eventSource = new EventSource(`${baseURL}/notifications/stream?token=${token}`);
+    let eventSource = null;
+    let sseFallbackMode = false;
 
-    eventSource.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === 'ping') return;
+    const connectSSE = () => {
+      if (sseFallbackMode) return; // Prevent reconnection if in fallback mode
       
-      // New notification arrived
-      setNotifications(prev => [data, ...prev]);
-      setUnreadCount(prev => prev + 1);
+      const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      eventSource = new EventSource(`${baseURL}/notifications/stream?token=${token}`);
 
-      // Show toast
-      if (data.type === 'error') {
-        toast.error(data.title || data.message);
-      } else if (data.type === 'success') {
-        toast.success(data.title || data.message);
-      } else {
-        toast(data.title || data.message, { icon: '🔔' });
-      }
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'ping') return;
+          
+          setNotifications(prev => [data, ...prev]);
+          setUnreadCount(prev => prev + 1);
+
+          if (data.type === 'error') {
+            toast.error(data.title || data.message);
+          } else if (data.type === 'success') {
+            toast.success(data.title || data.message);
+          } else {
+            toast(data.title || data.message, { icon: '🔔' });
+          }
+        } catch (e) {
+          console.error("Error parsing SSE data", e);
+        }
+      };
+
+      eventSource.onerror = (error) => {
+        console.warn("SSE Connection lost or failed. Entering fallback mode.");
+        sseFallbackMode = true; // enter fallback mode
+        if (eventSource) {
+          eventSource.close();
+        }
+      };
     };
 
-    eventSource.onerror = (error) => {
-      console.error("SSE Error:", error);
-      eventSource.close();
-    };
+    connectSSE();
 
     return () => {
-      eventSource.close();
+      if (eventSource) {
+        eventSource.close();
+      }
     };
   }, [isAuthenticated]);
 
