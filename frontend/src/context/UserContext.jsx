@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import api from '../services/api';
-import { PROMO_TEMPLATES } from '../constants/mockData';
+import { MOCK_STATS, MOCK_REVENUE_DATA, PROMO_TEMPLATES } from '../constants/mockData';
 import { useAuth } from './AuthContext';
 import { useNotification } from './NotificationContext';
 
@@ -12,43 +12,32 @@ export const UserProvider = ({ children }) => {
   const [userProfile, setUserProfile] = useState(null);
   const [promotions, setPromotions] = useState([]);
   const [customers, setCustomers] = useState([]);
-  const [stats, setStats] = useState({});
-  const [revenueData, setRevenueData] = useState([]);
-  const [promoTemplates, setPromoTemplates] = useState(PROMO_TEMPLATES);
+  const [stats, setStats] = useState(MOCK_STATS); // fallback to mock for now
+  const [revenueData, setRevenueData] = useState(MOCK_REVENUE_DATA); // fallback to mock
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchDashboardData = useCallback(async () => {
     if (!isAuthenticated) return;
-
+    
     setIsLoading(true);
     try {
       // 1. Fetch User / Business Profile
-      const businessRes = await api.get('/business/profile').catch(() => ({ data: null }));
-      const businessPayload = businessRes?.data?.data || businessRes?.data;
-      if (businessPayload) setUserProfile(businessPayload);
+      const businessRes = await api.get('/business').catch(() => ({ data: null }));
+      if (businessRes?.data) setUserProfile(businessRes.data);
 
       // 2. Fetch Promotions
-      const promosRes = await api.get('/promotions').catch(() => null);
-      const promosPayload = promosRes?.data?.data || promosRes?.data || promosRes;
-      setPromotions(Array.isArray(promosPayload) ? promosPayload : []);
+      const promosRes = await api.get('/promotions').catch(() => ({ data: [] }));
+      setPromotions(Array.isArray(promosRes?.data) ? promosRes.data : promosRes || []);
 
       // 3. Fetch Customers
-      const customersRes = await api.get('/customers').catch(() => null);
-      const customersPayload = customersRes?.data?.data || customersRes?.data || customersRes;
-      setCustomers(Array.isArray(customersPayload) ? customersPayload : []);
+      const customersRes = await api.get('/customers').catch(() => ({ data: [] }));
+      setCustomers(Array.isArray(customersRes?.data) ? customersRes.data : customersRes || []);
 
       // 4. Fetch Analytics Summary
-      const [statsRes, templatesRes] = await Promise.all([
-        api.get('/analytics/summary').catch(() => null),
-        api.get('/promotion-templates').catch(() => null),
-      ]);
-      const analyticsPayload = statsRes?.data?.data || statsRes?.data;
-      if (analyticsPayload) {
-        setStats(analyticsPayload.summary || {});
-        setRevenueData(analyticsPayload.chartData || []);
+      const statsRes = await api.get('/analytics/summary').catch(() => null);
+      if (statsRes?.data) {
+         // Transform backend stats format to frontend format if needed
       }
-      const templatesPayload = templatesRes?.data?.data || templatesRes?.data;
-      if (Array.isArray(templatesPayload)) setPromoTemplates(templatesPayload);
     } catch (error) {
       console.error("Failed to load initial data", error);
       addNotification("Не удалось загрузить данные дашборда", "error");
@@ -65,8 +54,8 @@ export const UserProvider = ({ children }) => {
   const addPromotion = async (promoData) => {
     try {
       const res = await api.post('/promotions', promoData);
-      const newPromo = res.data?.data || res.data || res;
-      setPromotions((current) => [newPromo, ...current]);
+      const newPromo = res.data || res;
+      setPromotions([newPromo, ...promotions]);
       addNotification("Акция успешно создана!", "success");
       return { success: true, data: newPromo };
     } catch (error) {
@@ -79,23 +68,11 @@ export const UserProvider = ({ children }) => {
   const updatePromotionStatus = async (id, status) => {
     try {
       await api.put(`/promotions/${id}`, { status });
-      setPromotions((current) => current.map(p => p.id === id ? { ...p, status, is_active: status === 'active' } : p));
-      addNotification(`Статус акции обновлен на ${status === 'active' ? 'Активна' : 'Пауза'}`, "success");
+      setPromotions(promotions.map(p => p.id === id ? { ...p, status } : p));
+      addNotification(`Статус акции обновлен на ${status}`, "success");
     } catch (error) {
       console.error("Failed to update status", error);
       addNotification("Ошибка при обновлении статуса", "error");
-      throw error;
-    }
-  };
-
-  const deletePromotion = async (id) => {
-    try {
-      await api.delete(`/promotions/${id}`);
-      setPromotions((current) => current.filter(p => p.id !== id));
-      addNotification("Акция удалена", "info");
-    } catch (error) {
-      console.error("Failed to delete promotion", error);
-      addNotification("Ошибка при удалении акции", "error");
       throw error;
     }
   };
@@ -111,10 +88,10 @@ export const UserProvider = ({ children }) => {
         }
       };
     });
-
+    
     try {
-      await api.put('/business/profile', {
-        integrations: { [key]: !userProfile?.integrations?.[key] }
+      await api.put('/business', { 
+        integrations: { [key]: !userProfile?.integrations?.[key] } 
       });
       addNotification("Статус интеграции обновлен", "success");
     } catch (error) {
@@ -125,12 +102,12 @@ export const UserProvider = ({ children }) => {
 
   const scanPromoQR = async (promoId, qrData = "") => {
     try {
-      await api.post('/analytics/record', {
-        event_type: 'scan',
+      await api.post('/analytics/record', { 
+        event_type: 'scan', 
         promotion_id: promoId,
         metadata: { qr: qrData }
       });
-
+      
       setPromotions(prev => prev.map(p => p.id === promoId ? { ...p, conversions: p.conversions + 1 } : p));
       addNotification("QR-код успешно отсканирован", "success");
       return { success: true };
@@ -144,8 +121,8 @@ export const UserProvider = ({ children }) => {
   const addCustomer = async (customerData) => {
     try {
       const res = await api.post('/customers', customerData);
-      const newCustomer = res.data?.data || res.data || res;
-      setCustomers((current) => [newCustomer, ...current]);
+      const newCustomer = res.data || res;
+      setCustomers([newCustomer, ...customers]);
       addNotification("Клиент успешно добавлен", "success");
       return { success: true, data: newCustomer };
     } catch (error) {
@@ -162,9 +139,9 @@ export const UserProvider = ({ children }) => {
       promotions,
       customers,
       revenueData,
-      promoTemplates,
+      promoTemplates: PROMO_TEMPLATES, 
       isLoading,
-      addPromotion,
+      addPromotion, 
       updatePromotionStatus,
       deletePromotion,
       toggleIntegration,

@@ -13,19 +13,21 @@ const INITIAL_MSG = {
 export const AIProvider = ({ children }) => {
   const { isAuthenticated } = useAuth();
   const { addNotification } = useNotification();
-  const [messages, setMessages] = useState([INITIAL_MSG]);
+  const [messages, setMessages] = useState([
+    { role: 'ai', content: 'Привет! Я твой бизнес-ассистент. Могу помочь создать акцию, проанализировать продажи или написать пост для соцсетей. Что будем делать сегодня?' }
+  ]);
   const [isTyping, setIsTyping] = useState(false);
   const [chatId, setChatId] = useState(null);
 
   // Load existing chat or create a new one on mount
   useEffect(() => {
     if (!isAuthenticated) return;
-
+    
     const initChat = async () => {
       try {
         const chatsRes = await api.get('/ai/chats');
         let currentChatId = null;
-
+        
         if (chatsRes.data && chatsRes.data.length > 0) {
           currentChatId = chatsRes.data[0].id;
         } else {
@@ -33,28 +35,21 @@ export const AIProvider = ({ children }) => {
           const newChatRes = await api.post('/ai/chats', { title: "Новый чат" });
           currentChatId = newChatRes.data?.id || newChatRes.id;
         }
-
+        
         setChatId(currentChatId);
-
-          if (currentChatId) {
-            const msgsRes = await api.get(`/ai/chats/${currentChatId}/messages`);
-            let history = msgsRes.data?.data || msgsRes.data || msgsRes;
-            if (Array.isArray(history) && history.length > 0) {
-              // Map old database fields (sender, text) to new format (role, content) for backward compatibility
-              history = history.map(m => ({
-                role: m.role || (m.sender === 'user' ? 'user' : 'ai'),
-                content: m.content || m.text
-              }));
-              setMessages(history);
-            } else {
-              setMessages([INITIAL_MSG]);
-            }
+        
+        if (currentChatId) {
+          const msgsRes = await api.get(`/ai/chats/${currentChatId}/messages`);
+          const history = msgsRes.data || msgsRes;
+          if (history && history.length > 0) {
+             setMessages(history);
           }
-        } catch (error) {
+        }
+      } catch (error) {
         console.error("Failed to initialize AI Chat", error);
       }
     };
-
+    
     initChat();
   }, [isAuthenticated]);
 
@@ -68,22 +63,21 @@ export const AIProvider = ({ children }) => {
       let targetChatId = chatId;
       // Fallback if chat creation failed initially
       if (!targetChatId) {
-        const newChatRes = await api.post('/ai/chats', { title: "Новый чат" });
-        targetChatId = newChatRes.data?.id || newChatRes.id;
-        setChatId(targetChatId);
+         const newChatRes = await api.post('/ai/chats', { title: "Новый чат" });
+         targetChatId = newChatRes.data?.id || newChatRes.id;
+         setChatId(targetChatId);
       }
-
+      
       const response = await api.post(`/ai/chats/${targetChatId}/messages`, { content: text });
-      // API returns { message: userMsg, reply: aiMsg }
-      const data = response.data || response;
-      const aiReply = data.reply;
-
+      // API returns the AI's reply message object
+      const aiReply = response.data || response; 
+      
       if (aiReply && aiReply.content) {
-        setMessages(prev => [...prev, aiReply]);
+         setMessages(prev => [...prev, aiReply]);
       } else {
-        throw new Error("Invalid response from AI");
+         throw new Error("Invalid response from AI");
       }
-
+      
     } catch (error) {
       console.error("AI chat error", error);
       addNotification("Не удалось получить ответ от AI", "error");
@@ -91,22 +85,6 @@ export const AIProvider = ({ children }) => {
       setMessages(prev => [...prev, { role: 'ai', content: "Извините, сейчас я не могу подключиться к серверу AI. Попробуйте позже." }]);
     } finally {
       setIsTyping(false);
-    }
-  };
-
-  const clearHistory = async () => {
-    if (!chatId) return;
-    try {
-      await api.delete(`/ai/chats/${chatId}`);
-      // Create new chat
-      const newChatRes = await api.post('/ai/chats', { title: "Новый чат" });
-      const newChatId = newChatRes.data?.id || newChatRes.id;
-      setChatId(newChatId);
-      setMessages([INITIAL_MSG]);
-      addNotification("История чата очищена", "success");
-    } catch (error) {
-      console.error("Failed to clear chat", error);
-      addNotification("Не удалось очистить историю", "error");
     }
   };
 

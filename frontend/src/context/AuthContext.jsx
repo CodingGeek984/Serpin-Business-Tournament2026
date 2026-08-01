@@ -6,7 +6,6 @@ const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [business, setBusiness] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -17,13 +16,7 @@ export const AuthProvider = ({ children }) => {
       if (token) {
         try {
           const response = await api.get('/auth/me');
-          // FIX: Backend 'ok()' returns { success: true, data: { user, business } }
-          const payload = response.data?.data || response.data || response;
-          const userData = payload.user || payload;
-          const businessData = payload.business || null;
-          
-          setUser(userData);
-          setBusiness(businessData);
+          setUser(response.data || response); // depends on backend format
           setIsAuthenticated(true);
         } catch (error) {
           console.error("Failed to authenticate with token", error);
@@ -37,62 +30,37 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await api.post('/auth/login', { email, password });
+      // Temporary fallback to mock data if backend isn't ready
+      // const response = await api.post('/auth/login', { email, password });
+      // const { token, user } = response.data;
       
-      // FIX: extract from response.data.data
-      const payload = response.data?.data || response.data || response;
-      const { access_token, token, user: userData, business: businessData } = payload;
+      // MOCK LOGIN FOR NOW to prevent breaking the flow before backend DB is fully seeded
+      const token = "mock_jwt_token_12345";
+      const userData = MOCK_USER;
       
-      const finalToken = access_token || token;
-      if (!finalToken) throw new Error("Неверный формат ответа от сервера (нет токена)");
-
-      localStorage.setItem('token', finalToken);
+      localStorage.setItem('token', token);
       setUser(userData);
-      setBusiness(businessData || null);
       setIsAuthenticated(true);
       return { success: true };
     } catch (error) {
       console.error("Login failed", error);
-      throw error; // FIX: Throw error so Login.jsx can catch it
-    }
-  };
-
-  const register = async (data) => {
-    try {
-      const response = await api.post('/auth/register', data);
-      
-      // FIX: extract from response.data.data
-      const payload = response.data?.data || response.data || response;
-      const { access_token, token, user: userData, business: businessData } = payload;
-      
-      const finalToken = access_token || token;
-      if (!finalToken) throw new Error("Неверный формат ответа от сервера (нет токена)");
-
-      localStorage.setItem('token', finalToken);
-      setUser(userData);
-      setBusiness(businessData || null);
-      setIsAuthenticated(true);
-      return { success: true };
-    } catch (error) {
-      console.error("Registration failed", error);
-      throw error;
+      return { success: false, error: error.message };
     }
   };
 
   const logout = async () => {
     try {
-      await api.post('/auth/logout').catch(() => { });
+      await api.post('/auth/logout').catch(() => {});
     } finally {
       localStorage.removeItem('token');
       setUser(null);
-      setBusiness(null);
       setIsAuthenticated(false);
       window.location.href = '/login';
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, business, setBusiness, updateBusiness: setBusiness, isAuthenticated, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, isLoading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

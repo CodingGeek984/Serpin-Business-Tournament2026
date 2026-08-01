@@ -94,43 +94,84 @@ const Customers = () => {
         ))}
       </div>
 
-      <Card className="overflow-hidden shadow-sm border-0 ring-1 ring-gray-100">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-gray-600">
-            <thead className="bg-gray-50/50 text-gray-500 uppercase text-xs border-b border-gray-100">
-              <tr>
-                <th className="px-6 py-4 font-medium">Клиент</th>
-                <th className="px-6 py-4 font-medium">Статус</th>
-                <th className="px-6 py-4 font-medium">Визиты</th>
-                <th className="px-6 py-4 font-medium">Потрачено</th>
-                <th className="px-6 py-4 font-medium">Последний визит</th>
-                <th className="px-6 py-4 font-medium text-right">Действия</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {isLoading ? (
-                <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center text-gray-500 flex flex-col items-center justify-center">
-                    <div className="w-8 h-8 border-2 border-[var(--color-brand-blue)] border-t-transparent rounded-full animate-spin mb-3"></div>
-                    <p>Загрузка клиентов...</p>
-                  </td>
-                </tr>
-              ) : filteredCustomers.length === 0 ? (
-                <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
-                    <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-3 mx-auto text-gray-400">
-                      <Search className="w-5 h-5" />
-                    </div>
-                    <p className="font-medium">Клиенты не найдены</p>
-                    <p className="text-xs mt-1 text-gray-400">Попробуйте изменить фильтры или условия поиска</p>
-                  </td>
-                </tr>
-              ) : (
-                filteredCustomers.map(customer => (
-                  <tr
-                    key={customer.id}
-                    onClick={() => navigate(`/customers/${customer.id}`)}
-                    className="hover:bg-blue-50/30 transition-colors cursor-pointer group"
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className={twMerge(clsx("xl:col-span-2", selectedCustomer ? "hidden xl:block" : "col-span-full"))}>
+          <Card className="overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm text-gray-600">
+                <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
+                  <tr>
+                    <th className="px-6 py-4 font-medium">Клиент</th>
+                    <th className="px-6 py-4 font-medium">Статус</th>
+                    <th className="px-6 py-4 font-medium">Визиты</th>
+                    <th className="px-6 py-4 font-medium">Потрачено</th>
+                    <th className="px-6 py-4 font-medium">Последний визит</th>
+                    <th className="px-6 py-4 font-medium text-right">Действия</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {/* eslint-disable-next-line react/prop-types */}
+                  {/* In a real project isLoading should be destructured from useUser() */}
+                  {filteredCustomers.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="px-6 py-12 text-center text-gray-500 flex flex-col items-center">
+                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3 text-gray-400">
+                           <Search className="w-6 h-6" />
+                        </div>
+                        <p>Клиенты не найдены</p>
+                        <p className="text-xs mt-1">Попробуйте изменить фильтры или добавить нового клиента.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredCustomers.map(customer => (
+                      <tr 
+                        key={customer.id} 
+                        onClick={() => setSelectedCustomer(customer)}
+                        className={twMerge(clsx(
+                          "hover:bg-blue-50/50 transition-colors cursor-pointer",
+                          selectedCustomer?.id === customer.id && "bg-blue-50"
+                        ))}
+                      >
+                        <td className="px-6 py-4">
+                          <div className="font-medium text-gray-900">{customer.name}</div>
+                          <div className="text-xs text-gray-500">{customer.phone}</div>
+                        </td>
+                        <td className="px-6 py-4">{getStatusBadge(customer.status)}</td>
+                        <td className="px-6 py-4">{customer.visits}</td>
+                        <td className="px-6 py-4 font-medium">{customer.totalSpent.toLocaleString()} ₸</td>
+                        <td className="px-6 py-4">{customer.lastVisit || 'Нет данных'}</td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); handleWhatsApp(customer); }}
+                              className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
+                              title="Написать в WhatsApp"
+                            >
+                              <MessageCircle className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </div>
+
+        {/* Customer Profile Sidebar */}
+        {selectedCustomer && (
+          <div className="xl:col-span-1">
+            <Card className="sticky top-20 border-[var(--color-brand-blue)] ring-1 ring-blue-100 shadow-lg">
+              <CardContent className="p-6">
+                <div className="flex justify-between items-start mb-6">
+                  <div className="w-16 h-16 bg-gradient-to-tr from-blue-100 to-blue-50 rounded-full flex items-center justify-center text-[var(--color-brand-blue)] font-bold text-xl">
+                    {selectedCustomer.name.charAt(0)}
+                  </div>
+                  <button 
+                    onClick={() => setSelectedCustomer(null)}
+                    className="xl:hidden text-gray-400 hover:text-gray-600"
                   >
                     <td className="px-6 py-4">
                       <div className="font-medium text-gray-900 group-hover:text-[var(--color-brand-blue)] transition-colors">{customer.name}</div>

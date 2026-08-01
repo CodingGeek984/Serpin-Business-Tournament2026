@@ -32,7 +32,7 @@ const QRSimulatorModal = ({ isOpen, onClose, promo }) => {
           // ignore background scan errors
         }
       );
-
+      
       scannerRef.current = scanner;
 
       return () => {
@@ -48,7 +48,7 @@ const QRSimulatorModal = ({ isOpen, onClose, promo }) => {
     try {
       await scanPromoQR(promo.id, qrData);
       setStatus('success');
-
+      
       setTimeout(() => {
         setStatus('idle');
         onClose();
@@ -60,13 +60,13 @@ const QRSimulatorModal = ({ isOpen, onClose, promo }) => {
 
   const handleSimulateScan = async () => {
     setStatus('scanning');
-
+    
     // Simulate network delay for the fake scan
     setTimeout(async () => {
       try {
         await scanPromoQR(promo.id, 'simulated_qr_data');
         setStatus('success');
-
+        
         setTimeout(() => {
           setStatus('idle');
           onClose();
@@ -81,7 +81,7 @@ const QRSimulatorModal = ({ isOpen, onClose, promo }) => {
   useEffect(() => {
     return () => {
       if (scannerRef.current) {
-        scannerRef.current.clear().catch(() => { });
+        scannerRef.current.clear().catch(() => {});
       }
     };
   }, []);
@@ -165,15 +165,15 @@ const QRSimulatorModal = ({ isOpen, onClose, promo }) => {
                       <p className="mt-4 text-[var(--color-brand-blue)] font-medium animate-pulse">Обработка...</p>
                     </motion.div>
                   ) : status === 'camera' ? (
-                    <motion.div
+                    <motion.div 
                       key="camera"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                       className="flex flex-col items-center w-full"
                     >
-                      <div id="qr-reader" className="w-full"></div>
-                      <Button variant="ghost" size="sm" className="mt-2" onClick={() => setStatus('idle')}>Отмена</Button>
+                       <div id="qr-reader" className="w-full"></div>
+                       <Button variant="ghost" size="sm" className="mt-2" onClick={() => setStatus('idle')}>Отмена</Button>
                     </motion.div>
                   ) : (
                     <motion.div
@@ -193,7 +193,7 @@ const QRSimulatorModal = ({ isOpen, onClose, promo }) => {
               <div className="mt-auto w-full flex flex-col gap-3">
                 {status !== 'camera' && (
                   <>
-                    <Button
+                    <Button 
                       className="w-full py-3 text-base shadow-sm gap-2"
                       onClick={() => setStatus('camera')}
                       disabled={status !== 'idle'}
@@ -201,7 +201,7 @@ const QRSimulatorModal = ({ isOpen, onClose, promo }) => {
                       <Camera className="w-5 h-5" />
                       Открыть камеру
                     </Button>
-                    <Button
+                    <Button 
                       variant="outline"
                       className="w-full py-3 text-base shadow-sm"
                       onClick={handleSimulateScan}
@@ -211,7 +211,7 @@ const QRSimulatorModal = ({ isOpen, onClose, promo }) => {
                     </Button>
                   </>
                 )}
-
+                
                 {promo.type === 'stamp' && (
                   <div className="w-full bg-white p-4 rounded-xl border border-gray-200 shadow-sm mt-2">
                     <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wider">Карта лояльности</p>
