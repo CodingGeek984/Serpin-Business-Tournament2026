@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { MOCK_TOOLS } from '../../constants/mockData';
+import React, { useEffect, useState } from 'react';
+import api from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import { Card, CardContent } from '../../components/common/Card/Card';
 import Button from '../../components/common/Button/Button';
 import { Mail, Gift, CreditCard, Brain, Check, ChevronRight, Heart } from 'lucide-react';
@@ -7,6 +8,7 @@ import { motion } from 'framer-motion';
 import { useNotification } from '../../context/NotificationContext';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import RecommendationWidget from '../../components/common/RecommendationWidget';
 
 const iconMap = {
   Mail: Mail,
@@ -30,36 +32,69 @@ const itemVariants = {
 
 const Tools = () => {
   const { addNotification } = useNotification();
+  const { token } = useAuth();
+  const [tools, setTools] = useState([]);
+  const [recommendations, setRecommendations] = useState([]);
   const [favorites, setFavorites] = useState(new Set());
-  const [filter, setFilter] = useState('all'); // all, active, inactive
+  const [filter, setFilter] = useState('all');
+  const [isLoading, setIsLoading] = useState(true);
 
-  const toggleFavorite = (id, name) => {
-    setFavorites(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-        addNotification(`"${name}" удален из избранного`, 'info');
-      } else {
-        next.add(id);
-        addNotification(`"${name}" добавлен в избранное`, 'success');
-      }
-      return next;
-    });
-  };
-
-  const handleAction = (tool) => {
-    if (tool.active) {
-      addNotification(`Открыты настройки для "${tool.name}"`, 'info');
-    } else {
-      addNotification(`Запрос на подключение "${tool.name}" отправлен`, 'success');
+  const loadData = async () => {
+    try {
+      const [toolsRes, recRes] = await Promise.all([
+        api.get('/tools'),
+        api.get('/tools/recommendations').catch(() => ({ data: { data: [] } }))
+      ]);
+      const items = toolsRes.data?.data || toolsRes.data || [];
+      setTools(items.map((item) => ({ ...item, active: item.is_activated })));
+      setFavorites(new Set(items.filter((item) => item.is_favorite).map((item) => item.id)));
+      
+      const recs = recRes.data?.data || recRes.data || [];
+      setRecommendations(recs.map((item) => ({ ...item, active: item.is_activated })));
+    } catch (error) {
+      addNotification(error.message, 'error');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const filteredTools = MOCK_TOOLS.filter(t => {
-    if (filter === 'active') return t.active;
-    if (filter === 'inactive') return !t.active;
-    return true;
-  });
+  useEffect(() => {
+    loadData();
+  }, [addNotification]);
+
+  const toggleFavorite = async (id, name) => {
+    const isFavorite = favorites.has(id);
+    try {
+      if (isFavorite) {
+        await api.delete(`/tools/${id}/favorite`);
+      } else {
+        await api.post(`/tools/${id}/favorite`);
+      }
+      setFavorites((current) => {
+        const next = new Set(current);
+        if (isFavorite) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+        return next;
+      });
+      addNotification(`"${name}" ${isFavorite ? 'удален из' : 'добавлен в'} избранное`, isFavorite ? 'info' : 'success');
+    } catch (error) {
+      addNotification(error.message, 'error');
+    }
+  };
+
+  const handleAction = async (tool) => {
+    if (tool.active) {
+      addNotification(`Открыты настройки для "${tool.name}"`, 'info');
+    } else {
+      window.location.href = '/business-tools';
+    }
+  };
+
+  const categories = ['all', ...new Set(tools.map((tool) => tool.category).filter(Boolean))];
+  const filteredTools = tools.filter((tool) => filter === 'all' || tool.category === filter);
 
   return (
     <motion.div
@@ -75,24 +110,60 @@ const Tools = () => {
         </div>
 
         <div className="flex gap-2 bg-gray-100 p-1 rounded-lg">
-          {[
-            { id: 'all', label: 'Все' },
-            { id: 'active', label: 'Подключенные' },
-            { id: 'inactive', label: 'Доступные' }
-          ].map(tab => (
+          {categories.map((category) => (
             <button
-              key={tab.id}
-              onClick={() => setFilter(tab.id)}
+              key={category}
+              onClick={() => setFilter(category)}
               className={twMerge(clsx(
                 "px-4 py-1.5 text-sm font-medium rounded-md transition-colors",
-                filter === tab.id ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700"
+                filter === category ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700"
               ))}
             >
-              {tab.label}
+              {category === 'all' ? 'Все' : category}
             </button>
           ))}
         </div>
       </motion.div>
+
+      <motion.div variants={itemVariants}>
+        <RecommendationWidget />
+      </motion.div>
+
+      {/* Smart Recommendations Section */}
+      {recommendations.length > 0 && filter === 'all' && (
+        <motion.div variants={itemVariants} className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100 shadow-sm mt-2 mb-4">
+          <div className="flex items-center gap-2 mb-4">
+            <Brain className="w-5 h-5 text-[var(--color-brand-blue)]" />
+            <h2 className="text-lg font-bold text-gray-900">Рекомендовано для вашего бизнеса</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {recommendations.map(tool => {
+              const Icon = iconMap[tool.icon] || ChevronRight;
+              return (
+                <Card key={`rec-${tool.id}`} className="hover:shadow-md transition-all duration-300 border-white bg-white/80 backdrop-blur-sm">
+                  <CardContent className="p-4 flex flex-col h-full">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-lg bg-blue-100 text-[var(--color-brand-blue)] flex items-center justify-center">
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900 leading-tight">{tool.name}</h3>
+                        {tool.active && <span className="text-[10px] uppercase font-bold text-emerald-600 bg-emerald-100 px-1.5 rounded-sm">Активно</span>}
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-600 line-clamp-2 mb-4">{tool.description}</p>
+                    <div className="mt-auto">
+                      <Button variant={tool.active ? "outline" : "primary"} className="w-full text-sm py-1.5 h-auto" onClick={() => handleAction(tool)}>
+                        {tool.active ? 'Настроить' : 'Подключить'}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </motion.div>
+      )}
 
       <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {filteredTools.map(tool => {

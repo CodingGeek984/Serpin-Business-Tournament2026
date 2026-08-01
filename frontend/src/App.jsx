@@ -5,22 +5,27 @@ import { UserProvider } from './context/UserContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { AIProvider } from './context/AIContext';
 import { NotificationProvider } from './context/NotificationContext';
+import ErrorBoundary from './components/ErrorBoundary';
+import { Toaster } from 'react-hot-toast';
 
 function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <UserProvider>
-          <AIProvider>
-            <NotificationProvider>
-              <div className="min-h-screen bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] font-sans">
-                <AppRoutes />
-              </div>
-            </NotificationProvider>
-          </AIProvider>
-        </UserProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <AuthProvider>
+          <NotificationProvider>
+            <UserProvider>
+              <AIProvider>
+                <div className="min-h-screen bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] font-sans">
+                  <Toaster position="top-right" />
+                  <AppRoutes />
+                </div>
+              </AIProvider>
+            </UserProvider>
+          </NotificationProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

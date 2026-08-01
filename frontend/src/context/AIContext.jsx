@@ -5,6 +5,11 @@ import { useNotification } from './NotificationContext';
 
 const AIContext = createContext();
 
+const INITIAL_MSG = { 
+  role: 'ai', 
+  content: 'Привет! Я твой бизнес-ассистент. Могу помочь создать акцию, проанализировать продажи или написать пост для соцсетей. Что будем делать сегодня?' 
+};
+
 export const AIProvider = ({ children }) => {
   const { isAuthenticated } = useAuth();
   const { addNotification } = useNotification();
@@ -84,7 +89,7 @@ export const AIProvider = ({ children }) => {
   };
 
   return (
-    <AIContext.Provider value={{ messages, isTyping, sendMessage }}>
+    <AIContext.Provider value={{ messages, isTyping, sendMessage, clearHistory }}>
       {children}
     </AIContext.Provider>
   );

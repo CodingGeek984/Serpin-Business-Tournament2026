@@ -1,44 +1,53 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../context/UserContext';
 import { useNotification } from '../../context/NotificationContext';
-import { Card, CardContent } from '../../components/common/Card/Card';
+import { Card } from '../../components/common/Card/Card';
 import Button from '../../components/common/Button/Button';
-import { Search, Filter, MessageCircle, Gift, Phone } from 'lucide-react';
+import { Search, MessageCircle, Plus, X } from 'lucide-react';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 const Customers = () => {
-  const { customers } = useUser();
+  const { customers, isLoading, addCustomer } = useUser();
   const { addNotification } = useNotification();
-  const [filter, setFilter] = useState('all'); // all, regular, sleeping, new
+  const navigate = useNavigate();
+  const [filter, setFilter] = useState('all'); // all, regular, sleeping, new, churn
   const [search, setSearch] = useState('');
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ name: '', phone: '', email: '', visits_count: 0, total_spent: 0, status: 'new' });
+  const [saving, setSaving] = useState(false);
+
+  const createCustomer = async (event) => {
+    event.preventDefault(); setSaving(true);
+    try { await addCustomer({ ...form, visits_count: Number(form.visits_count), total_spent: Number(form.total_spent), tags: [] }); setForm({ name: '', phone: '', email: '', visits_count: 0, total_spent: 0, status: 'new' }); setShowForm(false); } finally { setSaving(false); }
+  };
 
   const filteredCustomers = customers.filter(c => {
     const matchesFilter = filter === 'all' || c.status === filter;
-    const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) || c.phone.includes(search);
+    const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
+      c.phone.includes(search) ||
+      (c.email && c.email.toLowerCase().includes(search.toLowerCase()));
     return matchesFilter && matchesSearch;
   });
 
-  const handleWhatsApp = (customer) => {
+  const handleWhatsApp = (e, customer) => {
+    e.stopPropagation();
     addNotification(`Сообщение отправлено ${customer.name} через WhatsApp API (Demo)`, 'success');
   };
 
-  const handleGift = (customer) => {
-    addNotification(`Подарочный бонус начислен ${customer.name}`, 'success');
-  };
-
   const getStatusBadge = (status) => {
-    switch(status) {
+    switch (status) {
       case 'regular': return <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full text-xs font-medium">Постоянный</span>;
-      case 'sleeping': return <span className="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-medium">Уснувший</span>;
+      case 'sleeping': return <span className="bg-orange-100 text-orange-700 px-2 py-1 rounded-full text-xs font-medium">Уснувший</span>;
       case 'new': return <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-medium">Новый</span>;
+      case 'churn': return <span className="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-medium">Отток</span>;
       default: return null;
     }
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-end flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">База клиентов</h1>
@@ -47,34 +56,36 @@ const Customers = () => {
         <div className="flex gap-2">
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input 
-              type="text" 
-              placeholder="Поиск по имени или телефону..." 
+            <input
+              type="text"
+              placeholder="Поиск по имени, телефону или email..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-brand-blue)] outline-none w-64"
+              className="pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-brand-blue)] outline-none w-72"
             />
           </div>
           <Button variant="outline" className="gap-2">
             Экспорт
           </Button>
+          <Button className="gap-2" onClick={() => setShowForm(true)}><Plus className="w-4 h-4" />Клиент</Button>
         </div>
       </div>
 
-      <div className="flex gap-2 border-b border-gray-200 pb-2">
+      <div className="flex gap-2 border-b border-gray-200 pb-2 overflow-x-auto">
         {[
           { id: 'all', label: 'Все клиенты' },
           { id: 'regular', label: 'Постоянные' },
           { id: 'new', label: 'Новые' },
-          { id: 'sleeping', label: 'Уснувшие (>30 дней)' }
+          { id: 'sleeping', label: 'Уснувшие' },
+          { id: 'churn', label: 'Отток' }
         ].map(tab => (
           <button
             key={tab.id}
             onClick={() => setFilter(tab.id)}
             className={twMerge(clsx(
-              "px-4 py-2 text-sm font-medium rounded-lg transition-colors",
-              filter === tab.id 
-                ? "bg-[var(--color-brand-blue)] text-white" 
+              "px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap",
+              filter === tab.id
+                ? "bg-[var(--color-brand-blue)] text-white shadow-sm"
                 : "text-gray-600 hover:bg-gray-100"
             ))}
           >
@@ -162,71 +173,33 @@ const Customers = () => {
                     onClick={() => setSelectedCustomer(null)}
                     className="xl:hidden text-gray-400 hover:text-gray-600"
                   >
-                    Закрыть
-                  </button>
-                </div>
-                
-                <h2 className="text-xl font-bold text-gray-900">{selectedCustomer.name}</h2>
-                <div className="flex items-center gap-2 mt-2 text-gray-500 text-sm mb-4">
-                  <Phone className="w-4 h-4" />
-                  {selectedCustomer.phone}
-                </div>
-                
-                <div className="mb-6">{getStatusBadge(selectedCustomer.status)}</div>
-
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                    <p className="text-xs text-gray-500 mb-1">Всего визитов</p>
-                    <p className="text-lg font-bold">{selectedCustomer.visits}</p>
-                  </div>
-                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                    <p className="text-xs text-gray-500 mb-1">Сумма покупок</p>
-                    <p className="text-lg font-bold text-emerald-600">{selectedCustomer.totalSpent.toLocaleString()} ₸</p>
-                  </div>
-                </div>
-
-                <div className="mb-6 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-                  <p className="text-sm font-semibold mb-3">Накопленные штампы</p>
-                  <div className="flex gap-1 justify-between">
-                    {[1,2,3,4,5,6].map(i => (
-                      <div 
-                        key={i}
-                        className={twMerge(clsx(
-                          "w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold",
-                          i <= selectedCustomer.stamps 
-                            ? "bg-[var(--color-brand-blue)] border-[var(--color-brand-blue)] text-white" 
-                            : "border-gray-200 bg-white text-gray-300"
-                        ))}
-                      >
-                        {i === 6 ? <Gift className="w-4 h-4" /> : i}
+                    <td className="px-6 py-4">
+                      <div className="font-medium text-gray-900 group-hover:text-[var(--color-brand-blue)] transition-colors">{customer.name}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">{customer.phone}</div>
+                    </td>
+                    <td className="px-6 py-4">{getStatusBadge(customer.status)}</td>
+                    <td className="px-6 py-4 font-medium">{customer.visits}</td>
+                    <td className="px-6 py-4 font-medium text-emerald-600">{customer.totalSpent?.toLocaleString() || 0} ₸</td>
+                    <td className="px-6 py-4 text-gray-500">{customer.lastVisit || 'Нет данных'}</td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={(e) => handleWhatsApp(e, customer)}
+                          className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
+                          title="Написать в WhatsApp"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                        </button>
                       </div>
-                    ))}
-                  </div>
-                  <p className="text-xs text-gray-500 mt-3 text-center">Осталось {6 - selectedCustomer.stamps} покупок до подарка</p>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <Button 
-                    className="w-full bg-emerald-500 hover:bg-emerald-600 focus:ring-emerald-500 gap-2"
-                    onClick={() => handleWhatsApp(selectedCustomer)}
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    Написать в WhatsApp
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full gap-2 text-[var(--color-brand-blue)] border-[var(--color-brand-blue)] hover:bg-blue-50"
-                    onClick={() => handleGift(selectedCustomer)}
-                  >
-                    <Gift className="w-4 h-4" />
-                    Подарить бонус
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+      {showForm && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"><form onSubmit={createCustomer} className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"><div className="mb-5 flex items-center justify-between"><h2 className="text-xl font-bold">Новый клиент</h2><button type="button" onClick={() => setShowForm(false)}><X /></button></div><div className="grid gap-3"><input required placeholder="Имя клиента" value={form.name} onChange={(e) => setForm({...form,name:e.target.value})} className="rounded-lg border p-3"/><input placeholder="Телефон" value={form.phone} onChange={(e) => setForm({...form,phone:e.target.value})} className="rounded-lg border p-3"/><input type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({...form,email:e.target.value})} className="rounded-lg border p-3"/><div className="grid grid-cols-2 gap-3"><input min="0" type="number" placeholder="Визитов" value={form.visits_count} onChange={(e) => setForm({...form,visits_count:e.target.value})} className="rounded-lg border p-3"/><input min="0" type="number" placeholder="Потрачено, ₸" value={form.total_spent} onChange={(e) => setForm({...form,total_spent:e.target.value})} className="rounded-lg border p-3"/></div><select value={form.status} onChange={(e) => setForm({...form,status:e.target.value})} className="rounded-lg border p-3"><option value="new">Новый</option><option value="regular">Постоянный</option><option value="sleeping">Уснувший</option><option value="churn">Отток</option></select><Button type="submit" disabled={saving}>{saving ? 'Сохраняем...' : 'Добавить клиента'}</Button></div></form></div>}
     </div>
   );
 };

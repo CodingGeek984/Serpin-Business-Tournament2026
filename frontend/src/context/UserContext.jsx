@@ -133,16 +133,17 @@ export const UserProvider = ({ children }) => {
   };
 
   return (
-    <UserContext.Provider value={{ 
-      userProfile,
-      stats, 
-      promotions, 
-      customers, 
+    <UserContext.Provider value={{
+      userProfile: userProfile || { name: '', email: '', avatar: '', integrations: { kaspi: false, whatsapp: false } },
+      stats,
+      promotions,
+      customers,
       revenueData,
       promoTemplates: PROMO_TEMPLATES, 
       isLoading,
       addPromotion, 
       updatePromotionStatus,
+      deletePromotion,
       toggleIntegration,
       scanPromoQR,
       addCustomer,

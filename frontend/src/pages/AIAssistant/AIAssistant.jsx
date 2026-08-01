@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import AIChat from '../../components/ai/AIChat/AIChat';
 import { Sparkles, TrendingUp, Lightbulb } from 'lucide-react';
 import { Card, CardContent } from '../../components/common/Card/Card';
 import { motion } from 'framer-motion';
+import api from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -18,6 +20,25 @@ const itemVariants = {
 };
 
 const AIAssistant = () => {
+  const { token } = useAuth();
+  const [recommendations, setRecommendations] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      try {
+        const response = await api.get('/recommendations', { headers: { Authorization: `Bearer ${token}` } });
+        const payload = response.data?.data || response.data || response;
+        setRecommendations(Array.isArray(payload) ? payload : []);
+      } catch (error) {
+        console.error('Failed to load recommendations:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRecommendations();
+  }, [token]);
+
   return (
     <motion.div 
       className="flex flex-col gap-6 max-w-5xl mx-auto"
@@ -43,29 +64,29 @@ const AIAssistant = () => {
             Инсайты недели
           </h3>
 
-          <Card className="bg-blue-50 border-blue-100 hover:shadow-md transition-shadow">
-            <CardContent className="p-4">
-              <h4 className="font-semibold text-[var(--color-brand-blue)] text-sm mb-2 flex items-center">
-                <TrendingUp className="w-4 h-4 mr-1.5" />
-                Возможность роста
-              </h4>
-              <p className="text-sm text-gray-700 leading-relaxed">
-                За последние 7 дней 40% ваших клиентов приходили после обеда. Запуск акции "Счастливые часы" с 15:00 до 18:00 может увеличить выручку на 15%.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-emerald-50 border-emerald-100 hover:shadow-md transition-shadow">
-            <CardContent className="p-4">
-              <h4 className="font-semibold text-emerald-700 text-sm mb-2 flex items-center">
-                <Sparkles className="w-4 h-4 mr-1.5 animate-pulse" />
-                Рекомендация по Kaspi
-              </h4>
-              <p className="text-sm text-gray-700 leading-relaxed">
-                Добавьте подарочные наборы в Kaspi Магазин перед грядущими праздниками. По статистике, это увеличивает средний чек.
-              </p>
-            </CardContent>
-          </Card>
+          {loading ? (
+            <p className="text-sm text-gray-500">Загрузка инсайтов...</p>
+          ) : recommendations.length === 0 ? (
+            <Card className="bg-gray-50 border-gray-100">
+              <CardContent className="p-4 text-sm text-gray-500 text-center">
+                Пока нет новых инсайтов. Напишите AI, чтобы получить советы!
+              </CardContent>
+            </Card>
+          ) : (
+            (Array.isArray(recommendations) ? recommendations : []).map((rec) => (
+              <Card key={rec.id} className="bg-blue-50 border-blue-100 hover:shadow-md transition-shadow">
+                <CardContent className="p-4">
+                  <h4 className="font-semibold text-[var(--color-brand-blue)] text-sm mb-2 flex items-center">
+                    {rec.type === 'growth' ? <TrendingUp className="w-4 h-4 mr-1.5" /> : <Sparkles className="w-4 h-4 mr-1.5 animate-pulse" />}
+                    {rec.title || 'Новая рекомендация'}
+                  </h4>
+                  <p className="text-sm text-gray-700 leading-relaxed">
+                    {rec.description}
+                  </p>
+                </CardContent>
+              </Card>
+            ))
+          )}
         </motion.div>
       </div>
     </motion.div>

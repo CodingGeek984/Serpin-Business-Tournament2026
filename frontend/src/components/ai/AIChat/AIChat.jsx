@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../../common/Card/Card';
-import { Send, Sparkles, Bot, User, Loader2 } from 'lucide-react';
+import { Send, Sparkles, Bot, User, Loader2, Trash2 } from 'lucide-react';
 import { useAI } from '../../../context/AIContext';
 import Button from '../../common/Button/Button';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { motion, AnimatePresence } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const PRESET_PROMPTS = [
   "Придумай акцию для кофейни",
@@ -15,12 +17,15 @@ const PRESET_PROMPTS = [
 ];
 
 const AIChat = () => {
-  const { messages, isTyping, sendMessage } = useAI();
+  const { messages, isTyping, sendMessage, clearHistory } = useAI();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Add a slight delay to allow markdown to render properly before scrolling
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
   };
 
   useEffect(() => {
@@ -43,11 +48,19 @@ const AIChat = () => {
 
   return (
     <Card className="flex flex-col h-[600px] shadow-sm border-gray-200">
-      <CardHeader className="bg-[var(--color-brand-blue)] text-white rounded-t-xl py-3 px-4">
+      <CardHeader className="bg-[var(--color-brand-blue)] text-white rounded-t-xl py-3 px-4 flex flex-row items-center justify-between">
         <CardTitle className="text-white flex items-center text-base font-semibold">
           <Sparkles className="h-5 w-5 mr-2" />
           Serpin AI Assistant
         </CardTitle>
+        <button 
+          onClick={clearHistory}
+          disabled={isTyping}
+          className="text-blue-200 hover:text-white transition-colors disabled:opacity-50"
+          title="Очистить историю чата"
+        >
+          <Trash2 className="h-5 w-5" />
+        </button>
       </CardHeader>
       
       <CardContent className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 bg-gray-50/50">
@@ -71,12 +84,14 @@ const AIChat = () => {
               </div>
               
               <div className={twMerge(clsx(
-                "p-3 rounded-2xl text-sm leading-relaxed",
+                "p-3 rounded-2xl text-sm leading-relaxed prose prose-sm max-w-none",
                 msg.role === 'user' 
-                  ? "bg-[var(--color-brand-blue)] text-white rounded-tr-none" 
-                  : "bg-white border border-gray-100 shadow-sm text-gray-800 rounded-tl-none"
+                  ? "bg-[var(--color-brand-blue)] text-white rounded-tr-none prose-invert" 
+                  : "bg-white border border-gray-100 shadow-sm text-gray-800 rounded-tl-none prose-headings:mb-2 prose-p:mb-2 prose-p:last:mb-0"
               ))}>
-                {msg.content}
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {msg.content}
+                </ReactMarkdown>
               </div>
             </motion.div>
           ))}

@@ -90,14 +90,14 @@ const QRSimulatorModal = ({ isOpen, onClose, promo }) => {
     <AnimatePresence>
       {isOpen && promo && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={onClose}
           />
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -108,9 +108,9 @@ const QRSimulatorModal = ({ isOpen, onClose, promo }) => {
             <div className="bg-gray-100 h-8 flex justify-center items-center rounded-t-3xl border-b border-gray-200">
               <div className="w-16 h-4 bg-gray-300 rounded-full"></div>
             </div>
-            
+
             {/* Close button */}
-            <button 
+            <button
               onClick={onClose}
               className="absolute top-10 right-4 p-2 bg-white/80 rounded-full shadow-sm hover:bg-gray-100 transition-all duration-150 active:scale-95 z-10"
             >
@@ -119,7 +119,7 @@ const QRSimulatorModal = ({ isOpen, onClose, promo }) => {
 
             {/* Screen Content */}
             <div className="flex-1 overflow-y-auto bg-gray-50 flex flex-col p-6 items-center">
-              <motion.div 
+              <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.1, type: "spring" }}
@@ -127,7 +127,7 @@ const QRSimulatorModal = ({ isOpen, onClose, promo }) => {
               >
                 <Smartphone className="w-6 h-6 text-white" />
               </motion.div>
-              
+
               <h3 className="text-xl font-bold text-center text-gray-900 mb-2">Экран покупателя</h3>
               <p className="text-sm text-center text-gray-500 mb-8">
                 Наведите камеру на QR-код для получения {promo.type === 'stamp' ? 'штампа' : 'скидки'} по акции "{promo.title}"
@@ -136,7 +136,7 @@ const QRSimulatorModal = ({ isOpen, onClose, promo }) => {
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-8 w-full flex flex-col items-center justify-center relative overflow-hidden min-h-[220px]">
                 <AnimatePresence mode="wait">
                   {status === 'success' ? (
-                    <motion.div 
+                    <motion.div
                       key="success"
                       initial={{ scale: 0.5, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
@@ -147,7 +147,7 @@ const QRSimulatorModal = ({ isOpen, onClose, promo }) => {
                       <p className="font-bold text-emerald-600">Отсканировано!</p>
                     </motion.div>
                   ) : status === 'scanning' ? (
-                    <motion.div 
+                    <motion.div
                       key="scanning"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
@@ -156,7 +156,7 @@ const QRSimulatorModal = ({ isOpen, onClose, promo }) => {
                     >
                       <div className="relative">
                         <QrCode className="w-32 h-32 text-gray-300" />
-                        <motion.div 
+                        <motion.div
                           animate={{ top: ['0%', '100%', '0%'] }}
                           transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
                           className="absolute left-0 w-full h-1 bg-[var(--color-brand-blue)] opacity-70 blur-[1px]"
@@ -176,7 +176,7 @@ const QRSimulatorModal = ({ isOpen, onClose, promo }) => {
                        <Button variant="ghost" size="sm" className="mt-2" onClick={() => setStatus('idle')}>Отмена</Button>
                     </motion.div>
                   ) : (
-                    <motion.div 
+                    <motion.div
                       key="idle"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
@@ -216,13 +216,13 @@ const QRSimulatorModal = ({ isOpen, onClose, promo }) => {
                   <div className="w-full bg-white p-4 rounded-xl border border-gray-200 shadow-sm mt-2">
                     <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wider">Карта лояльности</p>
                     <div className="flex justify-between">
-                      {[1,2,3,4,5,6].map(i => (
-                        <div 
-                          key={i} 
+                      {[1, 2, 3, 4, 5, 6].map(i => (
+                        <div
+                          key={i}
                           className={twMerge(clsx(
                             "w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold transition-all duration-500",
-                            status === 'success' && i === 1 
-                              ? "bg-[var(--color-brand-blue)] border-[var(--color-brand-blue)] text-white scale-110" 
+                            status === 'success' && i === 1
+                              ? "bg-[var(--color-brand-blue)] border-[var(--color-brand-blue)] text-white scale-110"
                               : "border-gray-200 text-gray-300 bg-gray-50"
                           ))}
                         >
