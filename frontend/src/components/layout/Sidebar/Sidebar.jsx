@@ -26,7 +26,7 @@ const Sidebar = () => {
   const { user } = useAuth();
   const items = user?.role === 'admin' ? NAV_ITEMS : NAV_ITEMS.filter((item) => item.path !== '/admin');
   return (
-    <aside className="sticky top-14 h-[calc(100vh-3.5rem)] w-64 p-3 hidden md:flex flex-col bg-transparent">
+    <aside className="sticky top-14 h-[calc(100vh-3.5rem)] w-64 p-3 hidden md:flex flex-col bg-[#161224]/90 backdrop-blur-xl border-r border-[#bb9af7]/20">
       <nav className="flex flex-col gap-1 flex-1 overflow-y-auto pr-2 pb-4">
         {items.map((item) => (
           <NavLink

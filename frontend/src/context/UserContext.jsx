@@ -145,6 +145,30 @@ export const UserProvider = ({ children }) => {
     }
   };
 
+  const updateCustomer = async (id, customerData) => {
+    try {
+      const res = await api.put(`/customers/${id}`, customerData);
+      const updatedCustomer = res.data?.data || res.data || res;
+      setCustomers((current) => current.map((customer) => customer.id === id ? updatedCustomer : customer));
+      addNotification("Данные клиента обновлены", "success");
+      return updatedCustomer;
+    } catch (error) {
+      addNotification(error.message || "Не удалось обновить клиента", "error");
+      throw error;
+    }
+  };
+
+  const deleteCustomer = async (id) => {
+    try {
+      await api.delete(`/customers/${id}`);
+      setCustomers((current) => current.filter((customer) => customer.id !== id));
+      addNotification("Клиент удалён из базы", "info");
+    } catch (error) {
+      addNotification(error.message || "Не удалось удалить клиента", "error");
+      throw error;
+    }
+  };
+
   return (
     <UserContext.Provider value={{
       userProfile: userProfile || { name: '', email: '', avatar: '', integrations: { kaspi: false, whatsapp: false } },
@@ -160,6 +184,8 @@ export const UserProvider = ({ children }) => {
       toggleIntegration,
       scanPromoQR,
       addCustomer,
+      updateCustomer,
+      deleteCustomer,
       refreshData: fetchDashboardData
     }}>
       {children}

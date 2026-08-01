@@ -4,29 +4,57 @@ import { useUser } from '../../context/UserContext';
 import { useNotification } from '../../context/NotificationContext';
 import { Card } from '../../components/common/Card/Card';
 import Button from '../../components/common/Button/Button';
-import { Search, MessageCircle, Plus, X } from 'lucide-react';
+import { Search, MessageCircle, Plus, X, Pencil, Trash2 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 const Customers = () => {
-  const { customers, isLoading, addCustomer } = useUser();
+  const { customers, isLoading, addCustomer, updateCustomer, deleteCustomer } = useUser();
   const { addNotification } = useNotification();
   const navigate = useNavigate();
   const [filter, setFilter] = useState('all'); // all, regular, sleeping, new, churn
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', phone: '', email: '', visits_count: 0, total_spent: 0, status: 'new' });
+  const emptyCustomer = { name: '', phone: '', email: '', visits_count: 0, total_spent: 0, status: 'new' };
+  const [form, setForm] = useState(emptyCustomer);
   const [saving, setSaving] = useState(false);
+  const [recentlyAddedId, setRecentlyAddedId] = useState(null);
+  const [editingCustomer, setEditingCustomer] = useState(null);
 
   const createCustomer = async (event) => {
     event.preventDefault(); setSaving(true);
-    try { await addCustomer({ ...form, visits_count: Number(form.visits_count), total_spent: Number(form.total_spent), tags: [] }); setForm({ name: '', phone: '', email: '', visits_count: 0, total_spent: 0, status: 'new' }); setShowForm(false); } finally { setSaving(false); }
+    try {
+      const payload = { ...form, visits_count: Number(form.visits_count), total_spent: Number(form.total_spent), tags: editingCustomer?.tags || [] };
+      if (editingCustomer) {
+        await updateCustomer(editingCustomer.id, payload);
+      } else {
+        const result = await addCustomer(payload);
+        setRecentlyAddedId(result.data.id);
+        window.setTimeout(() => setRecentlyAddedId(null), 3000);
+      }
+      setForm(emptyCustomer);
+      setShowForm(false);
+      setEditingCustomer(null);
+    } finally { setSaving(false); }
+  };
+
+  const openCreate = () => { setEditingCustomer(null); setForm(emptyCustomer); setShowForm(true); };
+  const openEdit = (event, customer) => {
+    event.stopPropagation();
+    setEditingCustomer(customer);
+    setForm({ name: customer.name || '', phone: customer.phone || '', email: customer.email || '', visits_count: customer.visits_count ?? customer.visits ?? 0, total_spent: customer.total_spent ?? customer.totalSpent ?? 0, status: customer.status || 'new' });
+    setShowForm(true);
+  };
+  const removeCustomer = async (event, customer) => {
+    event.stopPropagation();
+    if (window.confirm(`Удалить клиента «${customer.name}» из базы?`)) await deleteCustomer(customer.id);
   };
 
   const filteredCustomers = customers.filter(c => {
     const matchesFilter = filter === 'all' || c.status === filter;
     const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.phone.includes(search) ||
+      String(c.phone || '').includes(search) ||
       (c.email && c.email.toLowerCase().includes(search.toLowerCase()));
     return matchesFilter && matchesSearch;
   });
@@ -67,7 +95,7 @@ const Customers = () => {
           <Button variant="outline" className="gap-2">
             Экспорт
           </Button>
-          <Button className="gap-2" onClick={() => setShowForm(true)}><Plus className="w-4 h-4" />Клиент</Button>
+          <Button className="gap-2" onClick={openCreate}><Plus className="w-4 h-4" />Добавить клиента</Button>
         </div>
       </div>
 
@@ -94,128 +122,80 @@ const Customers = () => {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className={twMerge(clsx("xl:col-span-2", selectedCustomer ? "hidden xl:block" : "col-span-full"))}>
-          <Card className="overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-gray-600">
-                <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
-                  <tr>
-                    <th className="px-6 py-4 font-medium">Клиент</th>
-                    <th className="px-6 py-4 font-medium">Статус</th>
-                    <th className="px-6 py-4 font-medium">Визиты</th>
-                    <th className="px-6 py-4 font-medium">Потрачено</th>
-                    <th className="px-6 py-4 font-medium">Последний визит</th>
-                    <th className="px-6 py-4 font-medium text-right">Действия</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {/* eslint-disable-next-line react/prop-types */}
-                  {/* In a real project isLoading should be destructured from useUser() */}
-                  {filteredCustomers.length === 0 ? (
-                    <tr>
-                      <td colSpan="6" className="px-6 py-12 text-center text-gray-500 flex flex-col items-center">
-                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3 text-gray-400">
-                           <Search className="w-6 h-6" />
-                        </div>
-                        <p>Клиенты не найдены</p>
-                        <p className="text-xs mt-1">Попробуйте изменить фильтры или добавить нового клиента.</p>
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredCustomers.map(customer => (
-                      <tr 
-                        key={customer.id} 
-                        onClick={() => setSelectedCustomer(customer)}
-                        className={twMerge(clsx(
-                          "hover:bg-blue-50/50 transition-colors cursor-pointer",
-                          selectedCustomer?.id === customer.id && "bg-blue-50"
-                        ))}
-                      >
-                        <td className="px-6 py-4">
-                          <div className="font-medium text-gray-900">{customer.name}</div>
-                          <div className="text-xs text-gray-500">{customer.phone}</div>
-                        </td>
-                        <td className="px-6 py-4">{getStatusBadge(customer.status)}</td>
-                        <td className="px-6 py-4">{customer.visits}</td>
-                        <td className="px-6 py-4 font-medium">{customer.totalSpent.toLocaleString()} ₸</td>
-                        <td className="px-6 py-4">{customer.lastVisit || 'Нет данных'}</td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex justify-end gap-2">
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); handleWhatsApp(customer); }}
-                              className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
-                              title="Написать в WhatsApp"
-                            >
-                              <MessageCircle className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        </div>
-
-        {/* Customer Profile Sidebar */}
-        {selectedCustomer && (
-          <div className="xl:col-span-1">
-            <Card className="sticky top-20 border-[var(--color-brand-blue)] ring-1 ring-blue-100 shadow-lg">
-              <CardContent className="p-6">
-                <div className="flex justify-between items-start mb-6">
-                  <div className="w-16 h-16 bg-gradient-to-tr from-blue-100 to-blue-50 rounded-full flex items-center justify-center text-[var(--color-brand-blue)] font-bold text-xl">
-                    {selectedCustomer.name.charAt(0)}
-                  </div>
-                  <button 
-                    onClick={() => setSelectedCustomer(null)}
-                    className="xl:hidden text-gray-400 hover:text-gray-600"
+      <Card className="overflow-hidden shadow-sm border-0 ring-1 ring-gray-100">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm text-gray-600">
+            <thead className="bg-gray-50/50 text-gray-500 uppercase text-xs border-b border-gray-100">
+              <tr>
+                <th className="px-6 py-4 font-medium">Клиент</th>
+                <th className="px-6 py-4 font-medium">Статус</th>
+                <th className="px-6 py-4 font-medium">Визиты</th>
+                <th className="px-6 py-4 font-medium">Потрачено</th>
+                <th className="px-6 py-4 font-medium">Последний визит</th>
+                <th className="px-6 py-4 font-medium text-right">Действия</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {isLoading ? (
+                <tr>
+                  <td colSpan="6" className="px-6 py-12 text-center text-gray-500 flex flex-col items-center justify-center">
+                    <div className="w-8 h-8 border-2 border-[var(--color-brand-blue)] border-t-transparent rounded-full animate-spin mb-3"></div>
+                    <p>Загрузка клиентов...</p>
+                  </td>
+                </tr>
+              ) : filteredCustomers.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                    <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-3 mx-auto text-gray-400">
+                      <Search className="w-5 h-5" />
+                    </div>
+                    <p className="font-medium">Клиенты не найдены</p>
+                    <p className="text-xs mt-1 text-gray-400">Попробуйте изменить фильтры или условия поиска</p>
+                  </td>
+                </tr>
+              ) : (
+                <AnimatePresence initial={false}>
+                {filteredCustomers.map(customer => (
+                  <motion.tr
+                    key={customer.id}
+                    layout
+                    initial={{ opacity: 0, y: -18, backgroundColor: '#dcfce7' }}
+                    animate={{ opacity: 1, y: 0, backgroundColor: recentlyAddedId === customer.id ? '#dcfce7' : 'rgba(255,255,255,0)' }}
+                    exit={{ opacity: 0, x: -12 }}
+                    transition={{ duration: 0.35 }}
+                    onClick={() => navigate(`/customers/${customer.id}`)}
+                    className="hover:bg-blue-50/30 transition-colors cursor-pointer group"
                   >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className="mt-4">
-                  <h3 className="text-xl font-bold text-gray-900">{selectedCustomer.name}</h3>
-                  <p className="text-gray-500 mt-1">{selectedCustomer.phone}</p>
-                  
-                  <div className="mt-6 space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-500">Статус</span>
-                      {getStatusBadge(selectedCustomer.status)}
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-500">Визиты</span>
-                      <span className="font-medium">{selectedCustomer.visits}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-500">Потрачено</span>
-                      <span className="font-medium text-emerald-600">{selectedCustomer.totalSpent?.toLocaleString() || 0} ₸</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-500">Последний визит</span>
-                      <span className="font-medium">{selectedCustomer.lastVisit || 'Нет данных'}</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-8">
-                    <Button 
-                      className="w-full bg-emerald-500 hover:bg-emerald-600 flex items-center justify-center gap-2"
-                      onClick={(e) => handleWhatsApp(selectedCustomer)}
-                    >
-                      <MessageCircle className="w-4 h-4" />
-                      Написать
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-      </div>
-      {showForm && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"><form onSubmit={createCustomer} className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"><div className="mb-5 flex items-center justify-between"><h2 className="text-xl font-bold">Новый клиент</h2><button type="button" onClick={() => setShowForm(false)}><X /></button></div><div className="grid gap-3"><input required placeholder="Имя клиента" value={form.name} onChange={(e) => setForm({...form,name:e.target.value})} className="rounded-lg border p-3"/><input placeholder="Телефон" value={form.phone} onChange={(e) => setForm({...form,phone:e.target.value})} className="rounded-lg border p-3"/><input type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({...form,email:e.target.value})} className="rounded-lg border p-3"/><div className="grid grid-cols-2 gap-3"><input min="0" type="number" placeholder="Визитов" value={form.visits_count} onChange={(e) => setForm({...form,visits_count:e.target.value})} className="rounded-lg border p-3"/><input min="0" type="number" placeholder="Потрачено, ₸" value={form.total_spent} onChange={(e) => setForm({...form,total_spent:e.target.value})} className="rounded-lg border p-3"/></div><select value={form.status} onChange={(e) => setForm({...form,status:e.target.value})} className="rounded-lg border p-3"><option value="new">Новый</option><option value="regular">Постоянный</option><option value="sleeping">Уснувший</option><option value="churn">Отток</option></select><Button type="submit" disabled={saving}>{saving ? 'Сохраняем...' : 'Добавить клиента'}</Button></div></form></div>}
+                    <td className="px-6 py-4">
+                      <div className="font-medium text-gray-900 group-hover:text-[var(--color-brand-blue)] transition-colors flex items-center gap-2">{customer.name}{recentlyAddedId === customer.id && <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">Добавлен</span>}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">{customer.phone}</div>
+                    </td>
+                    <td className="px-6 py-4">{getStatusBadge(customer.status)}</td>
+                    <td className="px-6 py-4 font-medium">{customer.visits}</td>
+                    <td className="px-6 py-4 font-medium text-emerald-600">{customer.totalSpent?.toLocaleString() || 0} ₸</td>
+                    <td className="px-6 py-4 text-gray-500">{customer.lastVisit || 'Нет данных'}</td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={(e) => handleWhatsApp(e, customer)}
+                          className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
+                          title="Написать в WhatsApp"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                        </button>
+                        <button onClick={(event) => openEdit(event, customer)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title="Редактировать клиента"><Pencil className="w-4 h-4" /></button>
+                        <button onClick={(event) => removeCustomer(event, customer)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-md transition-colors" title="Удалить клиента"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                    </td>
+                  </motion.tr>
+                ))
+                }</AnimatePresence>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+      <AnimatePresence>{showForm && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"><motion.form initial={{ opacity: 0, scale: 0.95, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 16 }} onSubmit={createCustomer} className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"><div className="mb-5 flex items-center justify-between"><h2 className="text-xl font-bold">{editingCustomer ? 'Редактировать клиента' : 'Новый клиент'}</h2><button type="button" onClick={() => { setShowForm(false); setEditingCustomer(null); }}><X /></button></div><div className="grid gap-3"><input required placeholder="Имя клиента" value={form.name} onChange={(e) => setForm({...form,name:e.target.value})} className="rounded-lg border p-3"/><input placeholder="Телефон" value={form.phone} onChange={(e) => setForm({...form,phone:e.target.value})} className="rounded-lg border p-3"/><input type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({...form,email:e.target.value})} className="rounded-lg border p-3"/><div className="grid grid-cols-2 gap-3"><input min="0" type="number" placeholder="Визитов" value={form.visits_count} onChange={(e) => setForm({...form,visits_count:e.target.value})} className="rounded-lg border p-3"/><input min="0" type="number" placeholder="Потрачено, ₸" value={form.total_spent} onChange={(e) => setForm({...form,total_spent:e.target.value})} className="rounded-lg border p-3"/></div><select value={form.status} onChange={(e) => setForm({...form,status:e.target.value})} className="rounded-lg border p-3"><option value="new">Новый</option><option value="regular">Постоянный</option><option value="sleeping">Уснувший</option><option value="churn">Отток</option></select><Button type="submit" disabled={saving}>{saving ? 'Сохраняем...' : editingCustomer ? 'Сохранить изменения' : 'Добавить клиента'}</Button></div></motion.form></motion.div>}</AnimatePresence>
     </div>
   );
 };

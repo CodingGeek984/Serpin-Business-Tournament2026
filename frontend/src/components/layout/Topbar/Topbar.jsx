@@ -10,7 +10,7 @@ const Topbar = () => {
   const { user } = useAuth();
 
   return (
-    <header className="sticky top-0 z-50 flex h-14 items-center justify-between bg-white px-4 shadow-sm border-b border-gray-200/60">
+    <header className="sticky top-0 z-50 flex h-14 items-center justify-between bg-[#161224]/90 backdrop-blur-xl px-4 shadow-sm border-b border-[#bb9af7]/20">
       {/* Left section: Logo and Search */}
       <div className="flex items-center gap-4 w-1/3">
         <div className="text-xl font-bold text-[var(--color-brand-blue)]">Serpin</div>

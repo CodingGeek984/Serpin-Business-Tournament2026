@@ -6,10 +6,10 @@ const Button = ({ children, variant = 'primary', className, ...props }) => {
   const baseStyle = "inline-flex items-center justify-center font-medium rounded-lg transition-all duration-150 active:scale-95 hover:shadow-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2";
   
   const variants = {
-    primary: "bg-[var(--color-brand-blue)] hover:bg-[var(--color-brand-blue-hover)] text-white focus:ring-[var(--color-brand-blue)]",
-    secondary: "bg-[var(--color-hover-bg)] hover:bg-gray-300 text-[var(--color-text-primary)] focus:ring-gray-300",
-    outline: "border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-[var(--color-brand-blue)]",
-    ghost: "bg-transparent hover:bg-[var(--color-hover-bg)] text-gray-700 focus:ring-gray-300",
+    primary: "bg-gradient-to-r from-[#bb9af7] via-[#9d7cd8] to-[#7aa2f7] hover:from-[#c0caf5] hover:via-[#bb9af7] hover:to-[#7dcfff] text-[#131020] shadow-lg shadow-[#bb9af7]/25 focus:ring-[#bb9af7]",
+    secondary: "bg-slate-100 hover:bg-slate-200 text-[var(--color-text-primary)] focus:ring-slate-300",
+    outline: "border border-slate-200 text-slate-700 hover:bg-slate-50 focus:ring-[var(--color-brand-blue)]",
+    ghost: "bg-transparent hover:bg-[var(--color-hover-bg)] text-slate-700 focus:ring-slate-300",
   };
 
   const sizes = {

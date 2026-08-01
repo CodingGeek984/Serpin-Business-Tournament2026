@@ -5,7 +5,7 @@ import clsx from 'clsx';
 export const Card = ({ children, className, ...props }) => {
   return (
     <div 
-      className={twMerge(clsx("bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden", className))}
+      className={twMerge(clsx("bg-[#1a162e]/90 backdrop-blur-md rounded-xl border border-[#bb9af7]/25 shadow-[0_10px_38px_-10px_rgba(0,0,0,0.42)] hover:shadow-2xl overflow-hidden", className))}
       {...props}
     >
       {children}
@@ -14,7 +14,7 @@ export const Card = ({ children, className, ...props }) => {
 };
 
 export const CardHeader = ({ children, className }) => (
-  <div className={twMerge(clsx("px-5 py-4 border-b border-gray-100 flex items-center justify-between", className))}>
+  <div className={twMerge(clsx("px-5 py-4 border-b border-[#342c46] flex items-center justify-between", className))}>
     {children}
   </div>
 );
