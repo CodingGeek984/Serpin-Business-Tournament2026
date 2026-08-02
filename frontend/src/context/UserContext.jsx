@@ -79,7 +79,7 @@ export const UserProvider = ({ children }) => {
   const updatePromotionStatus = async (id, status) => {
     try {
       await api.put(`/promotions/${id}`, { status });
-      setPromotions((current) => current.map(p => p.id === id ? { ...p, status, is_active: status === 'active' } : p));
+      setPromotions((current) => current.map(p => String(p.id) === String(id) ? { ...p, status, is_active: status === 'active' } : p));
       addNotification(`Статус акции обновлен на ${status === 'active' ? 'Активна' : 'Пауза'}`, "success");
     } catch (error) {
       console.error("Failed to update status", error);
@@ -91,7 +91,7 @@ export const UserProvider = ({ children }) => {
   const deletePromotion = async (id) => {
     try {
       await api.delete(`/promotions/${id}`);
-      setPromotions((current) => current.filter(p => p.id !== id));
+      setPromotions((current) => current.filter(p => String(p.id) !== String(id)));
       addNotification("Акция удалена", "info");
     } catch (error) {
       console.error("Failed to delete promotion", error);
@@ -131,7 +131,7 @@ export const UserProvider = ({ children }) => {
         metadata: { qr: qrData }
       });
 
-      setPromotions(prev => prev.map(p => p.id === promoId ? { ...p, conversions: p.conversions + 1 } : p));
+      setPromotions(prev => prev.map(p => String(p.id) === String(promoId) ? { ...p, conversions: p.conversions + 1 } : p));
       addNotification("QR-код успешно отсканирован", "success");
       return { success: true };
     } catch (error) {
@@ -146,7 +146,7 @@ export const UserProvider = ({ children }) => {
       const res = await api.post('/customers', customerData);
       const newCustomer = res.data?.data || res.data || res;
       setCustomers((current) => [newCustomer, ...current]);
-      addNotification("Клиент успешно добавлен", "success");
+      addNotification("Клиент успешно добавлен!", "success");
       return { success: true, data: newCustomer };
     } catch (error) {
       console.error("Failed to add customer", error);
@@ -159,7 +159,7 @@ export const UserProvider = ({ children }) => {
     try {
       const res = await api.put(`/customers/${id}`, customerData);
       const updatedCustomer = res.data?.data || res.data || res;
-      setCustomers((current) => current.map((customer) => customer.id === id ? updatedCustomer : customer));
+      setCustomers((current) => current.map((customer) => String(customer.id) === String(id) ? updatedCustomer : customer));
       addNotification("Данные клиента обновлены", "success");
       return updatedCustomer;
     } catch (error) {
@@ -171,8 +171,8 @@ export const UserProvider = ({ children }) => {
   const deleteCustomer = async (id) => {
     try {
       await api.delete(`/customers/${id}`);
-      setCustomers((current) => current.filter((customer) => customer.id !== id));
-      addNotification("Клиент удалён из базы", "info");
+      setCustomers((current) => current.filter((customer) => String(customer.id) !== String(id)));
+      addNotification("Клиент удален", "info");
     } catch (error) {
       addNotification(error.message || "Не удалось удалить клиента", "error");
       throw error;

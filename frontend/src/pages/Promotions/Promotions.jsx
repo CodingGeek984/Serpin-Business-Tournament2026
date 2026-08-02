@@ -106,24 +106,32 @@ const Promotions = () => {
             animate="show"
             className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-2"
           >
-            {filteredPromotions.map(promo => (
-              <motion.div key={promo.id} variants={itemVariants} layout className="relative group">
-                <PromotionCard promotion={promo} />
+            <AnimatePresence>
+              {filteredPromotions.map(promo => (
+                <motion.div 
+                  key={promo.id} 
+                  variants={itemVariants} 
+                  exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                  layout 
+                  className="relative group"
+                >
+                  <PromotionCard promotion={promo} />
 
-                {/* Quick action to test QR */}
-                {(promo.status === 'active' || promo.is_active === true) && (
-                  <div className="absolute top-4 right-20 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => setQrModalData(promo)}
-                      className="bg-[var(--color-bg-primary)] p-2 rounded-full hover:bg-[var(--color-brand-blue)] hover:text-white text-[var(--color-brand-blue)] transition-all duration-200 active:scale-90 shadow-sm border border-blue-100"
-                      title="Тестировать как клиент"
-                    >
-                      <QrCode className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-              </motion.div>
-            ))}
+                  {/* Quick action to test QR */}
+                  {(promo.status === 'active' || promo.is_active === true) && (
+                    <div className="absolute top-4 right-20 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => setQrModalData(promo)}
+                        className="bg-[var(--color-bg-primary)] p-2 rounded-full hover:bg-[var(--color-brand-blue)] hover:text-white text-[var(--color-brand-blue)] transition-all duration-200 active:scale-90 shadow-sm border border-blue-100"
+                        title="Тестировать как клиент"
+                      >
+                        <QrCode className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+            </AnimatePresence>
 
             {filteredPromotions.length === 0 && (
               <motion.div variants={itemVariants} className="col-span-full py-12 text-center text-gray-500">

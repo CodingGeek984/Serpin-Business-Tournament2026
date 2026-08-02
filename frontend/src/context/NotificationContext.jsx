@@ -30,7 +30,7 @@ export const NotificationProvider = ({ children }) => {
     const token = localStorage.getItem('token');
     
     // Connect to SSE
-    const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
     const eventSource = new EventSource(`${baseURL}/notifications/stream?token=${token}`);
 
     eventSource.onmessage = (event) => {
@@ -106,6 +106,16 @@ export const NotificationProvider = ({ children }) => {
       }
   }
 
+  const addNotification = (message, type = 'success') => {
+    if (type === 'error') {
+      toast.error(message);
+    } else if (type === 'success') {
+      toast.success(message);
+    } else {
+      toast(message, { icon: '🔔' });
+    }
+  };
+
   return (
     <NotificationContext.Provider value={{ 
         notifications, 
@@ -113,7 +123,8 @@ export const NotificationProvider = ({ children }) => {
         markAsRead, 
         markAllAsRead, 
         deleteNotification,
-        deleteAll
+        deleteAll,
+        addNotification
     }}>
       {children}
     </NotificationContext.Provider>

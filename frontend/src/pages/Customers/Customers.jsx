@@ -20,6 +20,7 @@ const Customers = () => {
   const [form, setForm] = useState(emptyCustomer);
   const [saving, setSaving] = useState(false);
   const [recentlyAddedId, setRecentlyAddedId] = useState(null);
+  const [recentlyUpdatedId, setRecentlyUpdatedId] = useState(null);
   const [editingCustomer, setEditingCustomer] = useState(null);
 
   const createCustomer = async (event) => {
@@ -28,14 +29,20 @@ const Customers = () => {
       const payload = { ...form, visits_count: Number(form.visits_count), total_spent: Number(form.total_spent), tags: editingCustomer?.tags || [] };
       if (editingCustomer) {
         await updateCustomer(editingCustomer.id, payload);
+        const uId = editingCustomer.id;
+        setForm(emptyCustomer);
+        setShowForm(false);
+        setEditingCustomer(null);
+        setRecentlyUpdatedId(uId);
+        setTimeout(() => setRecentlyUpdatedId(null), 2000);
       } else {
         const result = await addCustomer(payload);
+        setForm(emptyCustomer);
+        setShowForm(false);
         setRecentlyAddedId(result.data.id);
-        window.setTimeout(() => setRecentlyAddedId(null), 3000);
+        setTimeout(() => setRecentlyAddedId(null), 2000);
+        navigate('/customers');
       }
-      setForm(emptyCustomer);
-      setShowForm(false);
-      setEditingCustomer(null);
     } finally { setSaving(false); }
   };
 
@@ -159,12 +166,23 @@ const Customers = () => {
                   <motion.tr
                     key={customer.id}
                     layout
-                    initial={{ opacity: 0, y: -18, backgroundColor: '#dcfce7' }}
-                    animate={{ opacity: 1, y: 0, backgroundColor: recentlyAddedId === customer.id ? '#dcfce7' : 'rgba(255,255,255,0)' }}
-                    exit={{ opacity: 0, x: -12 }}
-                    transition={{ duration: 0.35 }}
+                    initial={{ opacity: 0, backgroundColor: 'rgba(187, 154, 247, 0)' }}
+                    animate={{
+                      opacity: 1, 
+                      backgroundColor: recentlyAddedId === customer.id 
+                        ? ['rgba(187, 154, 247, 0.4)', 'rgba(187, 154, 247, 0.1)', 'rgba(187, 154, 247, 0.3)', 'rgba(187, 154, 247, 0)'] // Neon purple flash
+                        : recentlyUpdatedId === customer.id
+                        ? ['rgba(125, 207, 255, 0.4)', 'rgba(125, 207, 255, 0.1)', 'rgba(125, 207, 255, 0.3)', 'rgba(125, 207, 255, 0)'] // Neon teal flash
+                        : 'rgba(255, 255, 255, 0)'
+                    }}
+                    exit={{ opacity: 0, backgroundColor: 'rgba(244, 63, 94, 0.3)' }}
+                    transition={{ duration: recentlyAddedId === customer.id || recentlyUpdatedId === customer.id ? 2 : 0.4 }}
                     onClick={() => navigate(`/customers/${customer.id}`)}
-                    className="hover:bg-blue-50/30 transition-colors cursor-pointer group"
+                    className={clsx(
+                      "hover:bg-blue-50/30 transition-all cursor-pointer group",
+                      recentlyAddedId === customer.id && "ring-2 ring-inset ring-[#bb9af7]",
+                      recentlyUpdatedId === customer.id && "ring-2 ring-inset ring-[#7dcfff]"
+                    )}
                   >
                     <td className="px-6 py-4">
                       <div className="font-medium text-gray-900 group-hover:text-[var(--color-brand-blue)] transition-colors flex items-center gap-2">{customer.name}{recentlyAddedId === customer.id && <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">Добавлен</span>}</div>

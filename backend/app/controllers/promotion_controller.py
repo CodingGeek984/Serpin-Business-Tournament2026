@@ -137,5 +137,5 @@ def delete_promotion(promotion_id):
     store.delete("promotions", promotion_id)
     return ok(message="Promotion deleted")
 
-
+    
     
