@@ -115,7 +115,7 @@ export const AIProvider = ({ children }) => {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    
+
     // Формируем системную инструкцию
     const systemInstruction = `Ты — полезный ИИ-ассистент платформы управления бизнесом.
 Тебя зовут Serpin Agent.
@@ -169,7 +169,7 @@ export const AIProvider = ({ children }) => {
       console.warn("Предварительная инициализация ИИ пропущена:", error.message);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, location.pathname]); 
+  }, [isAuthenticated, location.pathname]);
   // Мы можем пересоздавать сессию при смене страницы, чтобы обновить контекст местоположения в prompt,
   // Но пока оставим как есть, просто чтобы он знал при логине, где он.
 
@@ -183,7 +183,7 @@ export const AIProvider = ({ children }) => {
       if (name === 'createPromotion') {
         actionText = `Создаю акцию: ${args?.title || ''}...`;
         setSystemAction(actionText);
-        
+
         const promoData = {
           title: args.title,
           type: args.type || 'discount',
@@ -191,7 +191,7 @@ export const AIProvider = ({ children }) => {
           discount: args.discount || 0,
           status: 'active'
         };
-        
+
         if (addPromotion) {
           const res = await addPromotion(promoData);
           responseData = { message: "Акция успешно создана", data: res?.data || res };
@@ -202,18 +202,18 @@ export const AIProvider = ({ children }) => {
       } else if (name === 'navigateToPage') {
         actionText = `Перехожу на страницу: ${args?.path || ''}...`;
         setSystemAction(actionText);
-        
+
         if (typeof navigate === 'function') {
           navigate(args?.path || '/');
           responseData = { message: `Успешный переход на ${args.path}` };
         } else {
-           throw new Error("Функция навигации недоступна");
+          throw new Error("Функция навигации недоступна");
         }
 
       } else if (name === 'addCustomer') {
         actionText = `Добавляю клиента: ${args?.name || ''}...`;
         setSystemAction(actionText);
-        
+
         const customerData = {
           name: args.name,
           email: args.email || '',
@@ -221,12 +221,12 @@ export const AIProvider = ({ children }) => {
           segment: args.segment || 'new',
           status: 'active'
         };
-        
+
         if (addCustomer) {
-           const res = await addCustomer(customerData);
-           responseData = { message: "Клиент успешно добавлен", data: res?.data || res };
+          const res = await addCustomer(customerData);
+          responseData = { message: "Клиент успешно добавлен", data: res?.data || res };
         } else {
-           throw new Error("Функция addCustomer недоступна");
+          throw new Error("Функция addCustomer недоступна");
         }
 
       } else if (name === 'getDashboardStats') {
@@ -312,13 +312,61 @@ export const AIProvider = ({ children }) => {
     }
   };
 
+  const generatePromoWithAI = async (prompt) => {
+    try {
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      if (!apiKey) throw new Error("API ключ не найден");
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
+
+      const promptText = `Сгенерируй рекламную акцию для бизнеса по запросу: "${prompt}". 
+      Верни ответ СТРОГО в формате JSON со следующими полями:
+      - title (строка, броское название акции)
+      - typeId (число: 1 для скидки, 2 для штампов, 3 для счастливых часов, 4 для возврата)
+      - budget (число, примерный бюджет продвижения в тенге, например 5000)
+      Никакого другого текста, только валидный JSON.`;
+
+      const result = await model.generateContent(promptText);
+      const text = result.response.text();
+      const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      return JSON.parse(jsonStr);
+    } catch (e) {
+      console.error("Promo gen error", e);
+      throw e;
+    }
+  };
+
+  const generateDashboardAdvice = async (statsData) => {
+    try {
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      if (!apiKey) throw new Error("API ключ не найден");
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
+
+      const promptText = `Ты бизнес-аналитик. Статистика бизнеса: ${JSON.stringify(statsData)}. 
+      Выдай ровно 2 бизнес-рекомендации на основе этих данных.
+      Верни СТРОГО JSON-массив строк (не объекты, просто строки). Пример: ["Рекомендация 1", "Рекомендация 2"]. 
+      Никакого другого текста, только валидный JSON массив.`;
+
+      const result = await model.generateContent(promptText);
+      const text = result.response.text();
+      const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      return JSON.parse(jsonStr);
+    } catch (e) {
+      console.error("Dashboard advice error", e);
+      throw e;
+    }
+  };
+
   return (
     <AIContext.Provider value={{
       messages: Array.isArray(messages) ? messages : [],
       isTyping,
       systemAction,
       sendMessage,
-      clearHistory
+      clearHistory,
+      generatePromoWithAI,
+      generateDashboardAdvice
     }}>
       {children}
     </AIContext.Provider>
@@ -333,7 +381,9 @@ export const useAI = () => {
       isTyping: false,
       systemAction: null,
       sendMessage: () => { },
-      clearHistory: () => { }
+      clearHistory: () => { },
+      generatePromoWithAI: async () => null,
+      generateDashboardAdvice: async () => null
     };
   }
   return context;

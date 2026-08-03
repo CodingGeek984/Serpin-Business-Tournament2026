@@ -4,10 +4,11 @@ import StatCard from '../../components/dashboard/StatCard/StatCard';
 import RevenueChart from '../../components/dashboard/RevenueChart/RevenueChart';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/common/Card/Card';
 import Button from '../../components/common/Button/Button';
-import { ArrowRight, Plus } from 'lucide-react';
+import { ArrowRight, Plus, Sparkles, Loader2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import RecommendationWidget from '../../components/common/RecommendationWidget';
+import { useAI } from '../../context/AIContext';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -29,6 +30,23 @@ const Dashboard = () => {
   const [gamificationData, setGamificationData] = useState(null);
   const [loyaltyProgram, setLoyaltyProgram] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const { generateDashboardAdvice } = useAI();
+  const [aiAdvice, setAiAdvice] = useState(null);
+  const [isGeneratingAdvice, setIsGeneratingAdvice] = useState(false);
+
+  const fetchAdvice = async (currentData) => {
+    if (!currentData) return;
+    setIsGeneratingAdvice(true);
+    try {
+      const advice = await generateDashboardAdvice(currentData);
+      if (Array.isArray(advice)) setAiAdvice(advice);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsGeneratingAdvice(false);
+    }
+  };
 
   useEffect(() => {
     import('../../services/api').then(({ default: api }) => {
@@ -219,23 +237,37 @@ const Dashboard = () => {
 
           {/* AI Recommendations */}
           <Card className="hover:shadow-md transition-shadow border-[var(--color-brand-blue)] border-opacity-30 bg-blue-50/30">
-            <CardHeader className="pb-2">
+            <CardHeader className="pb-2 flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-blue-900">
-                <span className="text-xl">💡</span> Рекомендации
+                <Sparkles className="w-5 h-5 text-[var(--color-brand-blue)]" /> AI Советы
               </CardTitle>
+              <button
+                onClick={() => fetchAdvice(dashboardData)}
+                disabled={isGeneratingAdvice}
+                className="text-xs text-[var(--color-brand-blue)] hover:underline flex items-center gap-1 disabled:opacity-50"
+              >
+                {isGeneratingAdvice ? <Loader2 className="w-3 h-3 animate-spin" /> : "Обновить"}
+              </button>
             </CardHeader>
             <CardContent>
-              {dashboardData?.total_customers > 0 ? (
+              {isGeneratingAdvice ? (
+                <div className="flex flex-col items-center justify-center py-6">
+                  <Loader2 className="w-6 h-6 animate-spin text-[var(--color-brand-blue)] mb-2" />
+                  <span className="text-xs text-gray-500">ИИ анализирует данные...</span>
+                </div>
+              ) : aiAdvice && aiAdvice.length > 0 ? (
                 <ul className="space-y-3">
-                  <li className="flex gap-2 items-start text-sm">
-                    <span className="text-blue-600 mt-0.5">•</span>
-                    <span className="text-gray-700">Запустите акцию <strong>«Счастливые часы»</strong> — у вас спад визитов с 14:00 до 16:00.</span>
-                  </li>
-                  <li className="flex gap-2 items-start text-sm">
-                    <span className="text-blue-600 mt-0.5">•</span>
-                    <span className="text-gray-700">Верните клиентов: 12 человек не были у вас больше месяца. <Link to="/business-tools" className="text-blue-600 hover:underline">Отправить SMS</Link></span>
-                  </li>
+                  {aiAdvice.map((advice, i) => (
+                    <li key={i} className="flex gap-2 items-start text-sm">
+                      <span className="text-blue-600 mt-0.5">•</span>
+                      <span className="text-gray-700">{advice}</span>
+                    </li>
+                  ))}
                 </ul>
+              ) : dashboardData?.total_customers > 0 ? (
+                <div className="text-center py-4">
+                  <p className="text-sm text-gray-500 mb-2">Нажмите «Обновить», чтобы получить персонализированные бизнес-советы от ИИ.</p>
+                </div>
               ) : (
                 <div className="text-center py-4">
                   <p className="text-sm text-gray-500 mb-2">

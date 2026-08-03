@@ -4,7 +4,8 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../common/Card/Card
 import Button from '../../common/Button/Button';
 import { useUser } from '../../../context/UserContext';
 import { useNotification } from '../../../context/NotificationContext';
-import { Check, ChevronRight, Ticket, Tag, Clock, Send } from 'lucide-react';
+import { useAI } from '../../../context/AIContext';
+import { Check, ChevronRight, Ticket, Tag, Clock, Send, Sparkles, Loader2 } from 'lucide-react';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -39,6 +40,10 @@ const PromotionWizard = ({ onComplete, onCancel }) => {
 
   const [step, setStep] = useState(1);
   const [isCreating, setIsCreating] = useState(false);
+  const { generatePromoWithAI } = useAI();
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  
   const [formData, setFormData] = useState({
     typeId: null,
     title: '',
@@ -161,6 +166,49 @@ const PromotionWizard = ({ onComplete, onCancel }) => {
                     </div>
                   );
                 })}
+              </div>
+
+              {/* AI Generator UI */}
+              <div className="mt-8 bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100 shadow-sm">
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles className="w-5 h-5 text-indigo-500" />
+                  <h4 className="font-semibold text-gray-900">Или доверьте создание ИИ</h4>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <input
+                    type="text"
+                    value={aiPrompt}
+                    onChange={e => setAiPrompt(e.target.value)}
+                    placeholder="Например: хочу акцию для утреннего кофе"
+                    className="flex-1 px-4 py-2.5 rounded-lg border-none focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm text-sm"
+                    disabled={isGenerating}
+                  />
+                  <Button 
+                    onClick={async () => {
+                      if(!aiPrompt) return;
+                      setIsGenerating(true);
+                      try {
+                        const data = await generatePromoWithAI(aiPrompt);
+                        setFormData(prev => ({
+                          ...prev,
+                          typeId: data.typeId || 1,
+                          title: data.title || '',
+                          budget: data.budget || 0
+                        }));
+                        setStep(2);
+                        if(typeof notify === 'function') notify("Акция успешно сгенерирована!", "success");
+                      } catch(e) {
+                        if(typeof notify === 'function') notify("Ошибка генерации ИИ", "error");
+                      } finally {
+                        setIsGenerating(false);
+                      }
+                    }}
+                    disabled={isGenerating || !aiPrompt}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white min-w-[140px] shadow-sm border-none"
+                  >
+                    {isGenerating ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Сгенерировать"}
+                  </Button>
+                </div>
               </div>
             </motion.div>
           )}

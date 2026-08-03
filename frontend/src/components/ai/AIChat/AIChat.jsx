@@ -53,7 +53,7 @@ const AIChat = () => {
           <Sparkles className="h-5 w-5 mr-2" />
           Serpin AI Assistant
         </CardTitle>
-        <button 
+        <button
           onClick={clearHistory}
           disabled={isTyping}
           className="text-blue-200 hover:text-white transition-colors disabled:opacity-50"
@@ -62,12 +62,12 @@ const AIChat = () => {
           <Trash2 className="h-5 w-5" />
         </button>
       </CardHeader>
-      
+
       <CardContent className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 bg-gray-50/50">
         <AnimatePresence initial={false}>
           {messages.map((msg, idx) => (
-            <motion.div 
-              key={idx} 
+            <motion.div
+              key={idx}
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ type: "spring", stiffness: 400, damping: 25 }}
@@ -82,11 +82,11 @@ const AIChat = () => {
               ))}>
                 {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
               </div>
-              
+
               <div className={twMerge(clsx(
                 "p-3 rounded-2xl text-sm leading-relaxed prose prose-sm max-w-none",
-                msg.role === 'user' 
-                  ? "bg-[var(--color-brand-blue)] text-white rounded-tr-none prose-invert" 
+                msg.role === 'user'
+                  ? "bg-[var(--color-brand-blue)] text-white rounded-tr-none prose-invert"
                   : "bg-white border border-gray-100 shadow-sm text-gray-800 rounded-tl-none prose-headings:mb-2 prose-p:mb-2 prose-p:last:mb-0"
               ))}>
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -96,7 +96,7 @@ const AIChat = () => {
             </motion.div>
           ))}
           {isTyping && (
-            <motion.div 
+            <motion.div
               key="typing"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -112,7 +112,7 @@ const AIChat = () => {
             </motion.div>
           )}
           {systemAction && (
-            <motion.div 
+            <motion.div
               key="systemAction"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -133,7 +133,7 @@ const AIChat = () => {
         <div className="flex flex-wrap gap-2 mb-3">
           <AnimatePresence>
             {!isTyping && PRESET_PROMPTS.map((prompt, idx) => (
-              <motion.button 
+              <motion.button
                 key={idx}
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -153,11 +153,12 @@ const AIChat = () => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Спросите меня о чем угодно..."
-            className="flex-1 bg-gray-100 border-none outline-none rounded-full py-2.5 pl-4 pr-12 text-sm focus:ring-2 focus:ring-[var(--color-brand-blue)] focus:bg-white transition-all duration-200"
+            className="flex-1 bg-gray-100 border-none outline-none rounded-full py-2.5 pl-4 pr-12 text-sm text-gray-900 focus:ring-2 focus:ring-[var(--color-brand-blue)] focus:bg-white transition-all duration-200"
+            style={{ color: '#111827' }}
             disabled={isTyping}
           />
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={!input.trim() || isTyping}
             className="absolute right-1 top-1 w-8 h-8 flex items-center justify-center rounded-full bg-[var(--color-brand-blue)] text-white hover:bg-[var(--color-brand-blue-hover)] disabled:opacity-50 transition-all duration-150 active:scale-90"
           >
