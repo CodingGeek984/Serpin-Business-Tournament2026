@@ -35,7 +35,7 @@ export const NotificationProvider = ({ children }) => {
     const connectSSE = () => {
       if (sseFallbackMode) return; // Prevent reconnection if in fallback mode
       
-      const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
       eventSource = new EventSource(`${baseURL}/notifications/stream?token=${token}`);
 
       eventSource.onmessage = (event) => {

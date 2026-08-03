@@ -22,7 +22,7 @@ export const UserProvider = ({ children }) => {
     setIsLoading(true);
     try {
       // 1. Fetch User / Business Profile
-      const businessRes = await api.get('/business').catch(() => ({ data: null }));
+      const businessRes = await api.get('/business/profile').catch(() => ({ data: null }));
       if (businessRes?.data) setUserProfile(businessRes.data);
 
       // 2. Fetch Promotions
@@ -103,7 +103,7 @@ export const UserProvider = ({ children }) => {
     });
 
     try {
-      await api.put('/business', {
+      await api.put('/business/profile', {
         integrations: { [key]: !userProfile?.integrations?.[key] }
       });
       addNotification("Статус интеграции обновлен", "success");

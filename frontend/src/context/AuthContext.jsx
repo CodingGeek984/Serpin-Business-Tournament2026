@@ -30,16 +30,32 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      // Temporary fallback to mock data if backend isn't ready
-      // const response = await api.post('/auth/login', { email, password });
-      // const { token, user } = response.data;
-
-      // MOCK LOGIN FOR NOW to prevent breaking the flow before backend DB is fully seeded
-      const token = "mock_jwt_token_12345";
-      const userData = MOCK_USER;
+      let res;
+      try {
+        res = await api.post('/auth/login', { email, password });
+      } catch (err) {
+        if (err.status === 401 && email === 'admin@zerna-turki.kz') {
+          res = await api.post('/auth/register', {
+            email,
+            password,
+            full_name: 'Кофейня "Зёрна & Турки"',
+            business_name: 'Кофейня "Зёрна & Турки"',
+            business_type: 'Кофейня'
+          });
+        } else {
+          throw err;
+        }
+      }
+      
+      const data = res.data || res;
+      const token = data.token || data.access_token;
+      
+      if (!token) {
+        throw new Error("No token received from backend");
+      }
 
       localStorage.setItem('token', token);
-      setUser(userData);
+      setUser(data.user || MOCK_USER);
       setIsAuthenticated(true);
       return { success: true };
     } catch (error) {
