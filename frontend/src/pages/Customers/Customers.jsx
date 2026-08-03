@@ -30,13 +30,19 @@ const Customers = () => {
         await updateCustomer(editingCustomer.id, payload);
       } else {
         const result = await addCustomer(payload);
-        setRecentlyAddedId(result.data.id);
-        window.setTimeout(() => setRecentlyAddedId(null), 3000);
+        if (result && result.data && result.data.id) {
+          setRecentlyAddedId(result.data.id);
+          window.setTimeout(() => setRecentlyAddedId(null), 3000);
+        }
       }
+    } catch (error) {
+      console.error("Error saving customer:", error);
+    } finally { 
       setForm(emptyCustomer);
       setShowForm(false);
       setEditingCustomer(null);
-    } finally { setSaving(false); }
+      setSaving(false); 
+    }
   };
 
   const openCreate = () => { setEditingCustomer(null); setForm(emptyCustomer); setShowForm(true); };
@@ -195,7 +201,71 @@ const Customers = () => {
           </table>
         </div>
       </Card>
-      <AnimatePresence>{showForm && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"><motion.form initial={{ opacity: 0, scale: 0.95, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 16 }} onSubmit={createCustomer} className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"><div className="mb-5 flex items-center justify-between"><h2 className="text-xl font-bold">{editingCustomer ? 'Редактировать клиента' : 'Новый клиент'}</h2><button type="button" onClick={() => { setShowForm(false); setEditingCustomer(null); }}><X /></button></div><div className="grid gap-3"><input required placeholder="Имя клиента" value={form.name} onChange={(e) => setForm({...form,name:e.target.value})} className="rounded-lg border p-3"/><input placeholder="Телефон" value={form.phone} onChange={(e) => setForm({...form,phone:e.target.value})} className="rounded-lg border p-3"/><input type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({...form,email:e.target.value})} className="rounded-lg border p-3"/><div className="grid grid-cols-2 gap-3"><input min="0" type="number" placeholder="Визитов" value={form.visits_count} onChange={(e) => setForm({...form,visits_count:e.target.value})} className="rounded-lg border p-3"/><input min="0" type="number" placeholder="Потрачено, ₸" value={form.total_spent} onChange={(e) => setForm({...form,total_spent:e.target.value})} className="rounded-lg border p-3"/></div><select value={form.status} onChange={(e) => setForm({...form,status:e.target.value})} className="rounded-lg border p-3"><option value="new">Новый</option><option value="regular">Постоянный</option><option value="sleeping">Уснувший</option><option value="churn">Отток</option></select><Button type="submit" disabled={saving}>{saving ? 'Сохраняем...' : editingCustomer ? 'Сохранить изменения' : 'Добавить клиента'}</Button></div></motion.form></motion.div>}</AnimatePresence>
+      <AnimatePresence>
+        {showForm && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
+          >
+            <motion.form 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }} 
+              animate={{ opacity: 1, scale: 1, y: 0 }} 
+              exit={{ opacity: 0, scale: 0.95, y: 20 }} 
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              onSubmit={createCustomer} 
+              className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-gray-100"
+            >
+              <div className="mb-6 flex items-center justify-between border-b pb-4">
+                <h2 className="text-xl font-bold text-gray-900">{editingCustomer ? 'Редактировать клиента' : 'Новый клиент'}</h2>
+                <button type="button" className="text-gray-400 hover:text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-full p-1.5 transition-colors" onClick={() => { setShowForm(false); setEditingCustomer(null); }}>
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="grid gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Имя клиента *</label>
+                  <input required placeholder="Например: Иван Иванов" value={form.name || ''} onChange={(e) => setForm({...form, name: e.target.value})} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-200 transition-all" style={{ color: '#4b5563' }}/>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Номер телефона</label>
+                  <input placeholder="+7 (___) ___-__-__" value={form.phone || ''} onChange={(e) => setForm({...form, phone: e.target.value})} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-200 transition-all" style={{ color: '#4b5563' }}/>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
+                  <input type="email" placeholder="ivan@example.com" value={form.email || ''} onChange={(e) => setForm({...form, email: e.target.value})} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-200 transition-all" style={{ color: '#4b5563' }}/>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Кол-во визитов</label>
+                    <input min="0" type="number" value={form.visits_count || ''} onChange={(e) => setForm({...form, visits_count: e.target.value})} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-200 transition-all" style={{ color: '#4b5563' }}/>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Сумма (₸)</label>
+                    <input min="0" type="number" value={form.total_spent || ''} onChange={(e) => setForm({...form, total_spent: e.target.value})} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-200 transition-all" style={{ color: '#4b5563' }}/>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Статус клиента</label>
+                  <select value={form.status || 'new'} onChange={(e) => setForm({...form, status: e.target.value})} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-200 transition-all" style={{ color: '#4b5563' }}>
+                    <option value="new">Новый</option>
+                    <option value="regular">Постоянный</option>
+                    <option value="sleeping">Уснувший</option>
+                    <option value="churn">Отток</option>
+                  </select>
+                </div>
+                
+                <Button type="submit" disabled={saving} className="mt-2 w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium shadow-sm border-none">
+                  {saving ? 'Сохраняем...' : editingCustomer ? 'Сохранить изменения' : 'Добавить клиента'}
+                </Button>
+              </div>
+            </motion.form>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
